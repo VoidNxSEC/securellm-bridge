@@ -1,6 +1,6 @@
 //! Layout engine for multiplex splits
 
-use super::pane::{Pane, PaneId};
+use super::pane::PaneId;
 use ratatui::layout::{Constraint, Direction, Layout as RatatuiLayout, Rect};
 
 /// Layout tree for pane organization

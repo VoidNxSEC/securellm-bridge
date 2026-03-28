@@ -2,7 +2,7 @@
 
 use ratatui::{
     layout::Rect,
-    style::{Color, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
     Frame,
@@ -31,8 +31,11 @@ impl ContextPanel {
         self.cache_hits = 42;
     }
 
-    pub fn render(&self, f: &mut Frame, area: Rect) {
+    pub fn render(&self, f: &mut Frame, area: Rect, is_focused: bool) {
         use crate::themes::catppuccin::*;
+
+        let border = if is_focused { BORDER_FOCUSED } else { BORDER };
+        let title_color = if is_focused { ACCENT } else { PRIMARY };
 
         let content = vec![
             Line::from(vec![
@@ -73,14 +76,14 @@ impl ContextPanel {
         let paragraph = Paragraph::new(content).block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(BORDER))
+                .border_style(Style::default().fg(border))
                 .title(vec![
-                    Span::styled("📊 ", Style::default().fg(PRIMARY)),
+                    Span::styled("📊 ", Style::default().fg(title_color)),
                     Span::styled(
                         "Context",
                         Style::default()
                             .fg(FG_PRIMARY)
-                            .add_modifier(ratatui::style::Modifier::BOLD),
+                            .add_modifier(Modifier::BOLD),
                     ),
                 ])
                 .style(Style::default().bg(BG_CARD)),

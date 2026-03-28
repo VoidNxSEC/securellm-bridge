@@ -3,7 +3,7 @@
 use crate::app::TuiApp;
 use ratatui::{
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
     Frame,
@@ -25,6 +25,21 @@ impl StatusBar {
             crate::InputMode::Command => WARNING,     // Orange
             crate::InputMode::Voice => GRADIENT_PINK, // Pink
         };
+        let provider = if app.provider_available() {
+            ("online", SUCCESS)
+        } else {
+            ("offline", ERROR)
+        };
+        let voice = if app.voice_available() {
+            ("voice ready", SUCCESS)
+        } else {
+            ("voice off", FG_MUTED)
+        };
+        let agent = if app.agent_mode {
+            ("agent on", SUCCESS)
+        } else {
+            ("agent off", FG_MUTED)
+        };
 
         let content = vec![
             Line::from(vec![
@@ -37,20 +52,20 @@ impl StatusBar {
                 ),
                 Span::raw("  "),
                 Span::styled("◆ ", Style::default().fg(PRIMARY)),
-                Span::styled("Provider: ", Style::default().fg(FG_MUTED)),
+                Span::styled("Provider ", Style::default().fg(FG_MUTED)),
                 Span::styled(
-                    "LlamaCpp",
+                    provider.0,
                     Style::default()
-                        .fg(GRADIENT_PURPLE)
+                        .fg(provider.1)
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::raw("  "),
                 Span::styled("│", Style::default().fg(BORDER)),
                 Span::raw("  "),
                 Span::styled("◆ ", Style::default().fg(SECONDARY)),
-                Span::styled("Model: ", Style::default().fg(FG_MUTED)),
+                Span::styled("Focus ", Style::default().fg(FG_MUTED)),
                 Span::styled(
-                    "llamacppturbo:8081",
+                    app.focused_panel_label(),
                     Style::default()
                         .fg(GRADIENT_BLUE)
                         .add_modifier(Modifier::BOLD),
@@ -59,9 +74,9 @@ impl StatusBar {
                 Span::styled("│", Style::default().fg(BORDER)),
                 Span::raw("  "),
                 Span::styled("◆ ", Style::default().fg(SUCCESS)),
-                Span::styled("Tokens: ", Style::default().fg(FG_MUTED)),
+                Span::styled("Session ", Style::default().fg(FG_MUTED)),
                 Span::styled(
-                    "1.2K",
+                    format!("{} • {}", agent.0, voice.0),
                     Style::default()
                         .fg(GRADIENT_EMERALD)
                         .add_modifier(Modifier::BOLD),
@@ -74,7 +89,7 @@ impl StatusBar {
                     Span::styled(&app.input_buffer, Style::default().fg(FG_PRIMARY))
                 } else {
                     Span::styled(
-                        "Press 'i' to insert • 'v' for voice • ':' for commands • 'q' to quit",
+                        "Tab muda foco • Ctrl+T troca aba • i escreve • a agent • v voz • Ctrl+C sai",
                         Style::default().fg(FG_MUTED).add_modifier(Modifier::ITALIC),
                     )
                 },

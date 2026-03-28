@@ -36,7 +36,7 @@ impl ChatPane {
     }
 
     pub fn render(&self, f: &mut Frame, area: Rect) {
-        self.panel.render(f, area);
+        self.panel.render(f, area, false);
     }
 }
 
@@ -55,7 +55,7 @@ impl ToolPane {
     }
 
     pub fn render(&self, f: &mut Frame, area: Rect) {
-        self.panel.render(f, area);
+        self.panel.render(f, area, false);
     }
 }
 

@@ -20,6 +20,7 @@ pub struct TuiApp {
     pub context_panel: ContextPanel,
     pub logs_panel: LogsPanel,
     pub tool_panel: ToolExecutionPanel,
+    pub overview_panel: OverviewPanel,
     pub status_bar: StatusBar,
     pub focused_panel: FocusedPanel,
 
@@ -66,6 +67,7 @@ impl TuiApp {
             context_panel: ContextPanel::new(),
             logs_panel: LogsPanel::new(),
             tool_panel: ToolExecutionPanel::new(),
+            overview_panel: OverviewPanel::new(),
             status_bar: StatusBar::new(),
             focused_panel: FocusedPanel::Chat,
             tab_bar: TabBar::new(),
@@ -88,6 +90,8 @@ impl TuiApp {
         if !self.input_buffer.is_empty() {
             let message = self.input_buffer.clone();
             self.chat_panel.add_message("user", &message);
+            self.logs_panel
+                .add_log("INFO", &format!("Queued user message ({} chars)", message.len()));
             self.input_buffer.clear();
 
             // Send to LlamaCpp provider
@@ -118,15 +122,20 @@ impl TuiApp {
                         Ok(response) => {
                             if let Ok(text) = response.text() {
                                 self.chat_panel.add_message("assistant", &text);
+                                self.logs_panel.add_log("INFO", "Provider response received");
                             }
                         }
                         Err(e) => {
+                            self.logs_panel
+                                .add_log("ERROR", &format!("Provider request failed: {}", e));
                             self.chat_panel
                                 .add_message("system", &format!("Error: {}", e));
                         }
                     }
                 }
                 Err(e) => {
+                    self.logs_panel
+                        .add_log("ERROR", &format!("Provider initialization failed: {}", e));
                     self.chat_panel
                         .add_message("system", &format!("Provider error: {}", e));
                 }
@@ -139,10 +148,12 @@ impl TuiApp {
         if self.input_mode == InputMode::Voice {
             // Stop recording
             self.input_mode = InputMode::Normal;
+            self.logs_panel.add_log("INFO", "Voice capture stopped");
             // TODO: Process audio
         } else {
             // Start recording
             self.input_mode = InputMode::Voice;
+            self.logs_panel.add_log("INFO", "Voice capture started");
             // TODO: Start audio capture
         }
         Ok(())
@@ -156,6 +167,8 @@ impl TuiApp {
             FocusedPanel::Context => FocusedPanel::Logs,
             FocusedPanel::Logs => FocusedPanel::Chat,
         };
+        self.logs_panel
+            .add_log("DEBUG", &format!("Focus -> {}", self.focused_panel_label()));
     }
 
     /// Toggle agent mode
@@ -164,8 +177,32 @@ impl TuiApp {
         if self.agent_mode {
             self.chat_panel
                 .add_message("system", "🤖 Agent mode enabled");
+            self.logs_panel.add_log("INFO", "Agent mode enabled");
         } else {
             self.chat_panel.add_message("system", "Agent mode disabled");
+            self.logs_panel.add_log("INFO", "Agent mode disabled");
+        }
+    }
+
+    pub fn provider_available(&self) -> bool {
+        self.agent_executor.is_some()
+    }
+
+    pub fn voice_available(&self) -> bool {
+        self.voice_agent.is_some()
+    }
+
+    pub fn message_count(&self) -> usize {
+        self.chat_panel.message_count()
+    }
+
+    pub fn focused_panel_label(&self) -> &'static str {
+        match self.focused_panel {
+            FocusedPanel::Chat => "chat",
+            FocusedPanel::Tasks => "tasks",
+            FocusedPanel::Tools => "tools",
+            FocusedPanel::Context => "context",
+            FocusedPanel::Logs => "logs",
         }
     }
 }

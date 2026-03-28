@@ -2,9 +2,9 @@
 
 use ratatui::{
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
+    widgets::{Block, Borders, List, ListItem},
     Frame,
 };
 
@@ -37,8 +37,15 @@ impl ChatPanel {
         });
     }
 
-    pub fn render(&self, f: &mut Frame, area: Rect) {
+    pub fn message_count(&self) -> usize {
+        self.messages.len()
+    }
+
+    pub fn render(&self, f: &mut Frame, area: Rect, is_focused: bool) {
         use crate::themes::catppuccin::*;
+
+        let border = if is_focused { BORDER_FOCUSED } else { BORDER };
+        let title_color = if is_focused { ACCENT } else { PRIMARY };
 
         let items: Vec<ListItem> = self
             .messages
@@ -78,11 +85,11 @@ impl ChatPanel {
         let list = List::new(items).block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(BORDER))
+                .border_style(Style::default().fg(border))
                 .title(vec![
-                    Span::styled("💬 ", Style::default().fg(PRIMARY)),
+                    Span::styled("💬 ", Style::default().fg(title_color)),
                     Span::styled(
-                        "Chat",
+                        format!("Chat · {}", self.messages.len()),
                         Style::default().fg(FG_PRIMARY).add_modifier(Modifier::BOLD),
                     ),
                 ])

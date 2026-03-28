@@ -38,6 +38,7 @@ impl TabBarWidget {
             .collect();
 
         let tabs = Tabs::new(titles)
+            .select(active_index)
             .block(
                 Block::default()
                     .borders(Borders::BOTTOM)

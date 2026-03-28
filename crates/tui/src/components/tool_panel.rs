@@ -64,7 +64,10 @@ impl ToolExecutionPanel {
         self.executions.clear();
     }
 
-    pub fn render(&self, f: &mut Frame, area: Rect) {
+    pub fn render(&self, f: &mut Frame, area: Rect, is_focused: bool) {
+        let border = if is_focused { BORDER_FOCUSED } else { BORDER };
+        let title_color = if is_focused { ACCENT } else { WARNING };
+
         let items: Vec<ListItem> = self
             .executions
             .iter()
@@ -126,11 +129,11 @@ impl ToolExecutionPanel {
         let list = List::new(items).block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(BORDER))
+                .border_style(Style::default().fg(border))
                 .title(vec![
-                    Span::styled("🔧 ", Style::default().fg(WARNING)),
+                    Span::styled("🔧 ", Style::default().fg(title_color)),
                     Span::styled(
-                        "Tools",
+                        format!("Tools · {}", self.executions.len()),
                         Style::default().fg(FG_PRIMARY).add_modifier(Modifier::BOLD),
                     ),
                 ])
