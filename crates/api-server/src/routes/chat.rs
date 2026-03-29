@@ -178,7 +178,52 @@ pub async fn chat_completions(
                     completion_tokens,
                 );
 
-                // 2. Feed the Anomaly Detector (QoS Observatory)
+                // 2. Increment Prometheus metrics
+                state
+                    .metrics
+                    .requests_total
+                    .with_label_values(&[&provider_name, "success"])
+                    .inc();
+                state
+                    .metrics
+                    .request_duration_seconds
+                    .with_label_values(&[&provider_name])
+                    .observe(duration.as_secs_f64());
+                state
+                    .metrics
+                    .token_usage_total
+                    .with_label_values(&[&provider_name, "prompt"])
+                    .inc_by(prompt_tokens as f64);
+                state
+                    .metrics
+                    .token_usage_total
+                    .with_label_values(&[&provider_name, "completion"])
+                    .inc_by(completion_tokens as f64);
+                state
+                    .metrics
+                    .cost_usd_total
+                    .with_label_values(&[&provider_name])
+                    .inc_by(cost);
+
+                // 3. Publish NATS events (fire-and-forget)
+                {
+                    let publisher = state.nats_publisher.clone();
+                    let p_name = provider_name.clone();
+                    let m_name = model_name.clone();
+                    let rid = request_id;
+                    let pt = prompt_tokens;
+                    let ct = completion_tokens;
+                    let dur_ms = duration_ms;
+                    tokio::spawn(async move {
+                        publisher.publish_llm_request(rid, &m_name, &p_name, pt).await;
+                        publisher
+                            .publish_llm_response(rid, &m_name, &p_name, ct, dur_ms, "success")
+                            .await;
+                        publisher.publish_cost_event(&p_name, &m_name, cost, pt + ct).await;
+                    });
+                }
+
+                // 4. Feed the Anomaly Detector (QoS Observatory)
                 state.qos_observatory.observe_request(
                     &provider_name,
                     &model_name,
@@ -186,7 +231,7 @@ pub async fn chat_completions(
                     false, // Success
                 );
 
-                // 3. Log response sent with precise cost
+                // 5. Log response sent with precise cost
                 let audit_event = AuditEvent {
                     timestamp: chrono::Utc::now(),
                     request_id,
@@ -213,6 +258,18 @@ pub async fn chat_completions(
             Err(e) => {
                 let duration = start.elapsed();
                 let duration_ms = duration.as_millis() as u64;
+
+                // Increment error metrics
+                state
+                    .metrics
+                    .requests_total
+                    .with_label_values(&[&provider_name, "error"])
+                    .inc();
+                state
+                    .metrics
+                    .provider_errors_total
+                    .with_label_values(&[&provider_name])
+                    .inc();
 
                 // Report failure to QoS Observatory
                 state.qos_observatory.observe_request(

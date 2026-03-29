@@ -1,11 +1,13 @@
 use anyhow::{Context, Result};
 use deadpool_redis::{Config as RedisConfig, Pool as RedisPool, Runtime};
+use prometheus::{CounterVec, HistogramVec, Opts, HistogramOpts, Registry};
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::config::Config;
 use crate::services::audit::SqliteAuditSink;
+use crate::services::nats::NatsPublisher;
 use securellm_core::intelligence::{
     PricingRegistry, PricingTier, QoSObservatory, SmartRoutingEngine,
 };
@@ -18,6 +20,7 @@ pub struct AppState {
     pub redis_pool: RedisPool,
     pub provider_manager: Arc<ProviderManager>,
     pub metrics: Arc<MetricsCollector>,
+    pub nats_publisher: Arc<NatsPublisher>,
     pub audit_logger: securellm_core::audit::AuditLogger,
     pub rate_limiter: Arc<securellm_core::rate_limit::RateLimiter>,
     pub pricing_registry: Arc<PricingRegistry>,
@@ -46,6 +49,11 @@ impl AppState {
 
         let provider_manager = Arc::new(ProviderManager::new(config.clone()).await?);
         let metrics = Arc::new(MetricsCollector::new());
+
+        // NATS publisher (non-fatal if NATS is unavailable)
+        let nats_url = std::env::var("NATS_URL")
+            .unwrap_or_else(|_| "nats://localhost:4222".to_string());
+        let nats_publisher = Arc::new(NatsPublisher::connect(&nats_url).await);
 
         let audit_sink = Arc::new(SqliteAuditSink::new(db_pool.clone()));
         let audit_logger = securellm_core::audit::AuditLogger::with_sink(audit_sink);
@@ -89,6 +97,7 @@ impl AppState {
             redis_pool,
             provider_manager,
             metrics,
+            nats_publisher,
             audit_logger,
             rate_limiter,
             pricing_registry,
@@ -366,9 +375,90 @@ impl CircuitBreaker {
     }
 }
 
-pub struct MetricsCollector {}
+/// Real Prometheus metrics for SecureLLM Bridge.
+pub struct MetricsCollector {
+    pub registry: Registry,
+    pub requests_total: CounterVec,
+    pub request_duration_seconds: HistogramVec,
+    pub rate_limited_total: CounterVec,
+    pub provider_errors_total: CounterVec,
+    pub token_usage_total: CounterVec,
+    pub cost_usd_total: CounterVec,
+}
+
 impl MetricsCollector {
     pub fn new() -> Self {
-        Self {}
+        let registry = Registry::new();
+
+        let requests_total = CounterVec::new(
+            Opts::new("securellm_requests_total", "Total number of requests"),
+            &["provider", "status"],
+        )
+        .expect("metric creation failed");
+        registry
+            .register(Box::new(requests_total.clone()))
+            .expect("metric registration failed");
+
+        let request_duration_seconds = HistogramVec::new(
+            HistogramOpts::new(
+                "securellm_request_duration_seconds",
+                "Request duration in seconds",
+            )
+            .buckets(vec![0.1, 0.5, 1.0, 2.0, 5.0, 10.0]),
+            &["provider"],
+        )
+        .expect("metric creation failed");
+        registry
+            .register(Box::new(request_duration_seconds.clone()))
+            .expect("metric registration failed");
+
+        let rate_limited_total = CounterVec::new(
+            Opts::new(
+                "securellm_rate_limited_total",
+                "Total rate limited requests",
+            ),
+            &["provider"],
+        )
+        .expect("metric creation failed");
+        registry
+            .register(Box::new(rate_limited_total.clone()))
+            .expect("metric registration failed");
+
+        let provider_errors_total = CounterVec::new(
+            Opts::new("securellm_provider_errors_total", "Total provider errors"),
+            &["provider"],
+        )
+        .expect("metric creation failed");
+        registry
+            .register(Box::new(provider_errors_total.clone()))
+            .expect("metric registration failed");
+
+        let token_usage_total = CounterVec::new(
+            Opts::new("securellm_token_usage_total", "Total tokens used"),
+            &["provider", "type"],
+        )
+        .expect("metric creation failed");
+        registry
+            .register(Box::new(token_usage_total.clone()))
+            .expect("metric registration failed");
+
+        let cost_usd_total = CounterVec::new(
+            Opts::new("securellm_cost_usd_total", "Total cost in USD"),
+            &["provider"],
+        )
+        .expect("metric creation failed");
+        registry
+            .register(Box::new(cost_usd_total.clone()))
+            .expect("metric registration failed");
+
+        Self {
+            registry,
+            requests_total,
+            request_duration_seconds,
+            rate_limited_total,
+            provider_errors_total,
+            token_usage_total,
+            cost_usd_total,
+        }
     }
 }

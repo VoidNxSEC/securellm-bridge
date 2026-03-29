@@ -72,6 +72,9 @@ parking_lot = "0.12"
 # HTTP client with connection pooling
 reqwest = { workspace = true, features = ["json", "stream"] }
 
+# NATS event bus
+async-nats = "0.37"
+
 [dev-dependencies]
 
 tokio-test = "0.4"
