@@ -80,7 +80,7 @@
 
           meta = with pkgs.lib; {
             description = "Secure LLM API proxy with enterprise-grade security";
-            homepage = "https://github.com/VoidNxSEC/securellm-bridge";
+            homepage = "https://github.com/marcosfpina/securellm-bridge";
             license = with licenses; [
               mit
               asl20
@@ -130,7 +130,7 @@
           meta = with pkgs.lib; {
             description = "MCP server for SecureLLM Bridge IDE integration";
             license = licenses.mit;
-            maintainers = [ "kernelcore" ];
+            maintainers = [ "marcosfpina" ];
           };
         };
 

@@ -23,3 +23,4 @@ mcp-server/node_modules/
 *.db
 *.db-shm
 *.db-wal
+.direnv/
