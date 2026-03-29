@@ -48,6 +48,15 @@ pub struct ProvidersConfig {
     pub llamacpp: Option<LlamaCppConfig>,
     pub gemini: Option<ProviderConfig>,
     pub nvidia: Option<ProviderConfig>,
+    pub ml_ops: Option<MlOpsConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MlOpsConfig {
+    pub enabled: bool,
+    /// Base URL of ml-ops-api (default: http://ml-ops-api:8083)
+    pub base_url: String,
+    pub circuit_breaker: CircuitBreakerConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -152,6 +161,7 @@ impl Config {
                 llamacpp: Self::load_llamacpp_config(),
                 gemini: Self::load_provider_config("GEMINI"),
                 nvidia: Self::load_provider_config("NVIDIA"),
+                ml_ops: Self::load_ml_ops_config(),
             },
             security: SecurityConfig {
                 api_keys: std::env::var("API_KEYS")
@@ -218,6 +228,26 @@ impl Config {
                 failure_threshold: 5,
                 success_threshold: 2,
                 timeout_secs: 60,
+            },
+        })
+    }
+
+    fn load_ml_ops_config() -> Option<MlOpsConfig> {
+        let enabled = std::env::var("ML_OPS_ENABLED")
+            .unwrap_or_else(|_| "false".to_string())
+            .parse()
+            .unwrap_or(false);
+        if !enabled {
+            return None;
+        }
+        Some(MlOpsConfig {
+            enabled,
+            base_url: std::env::var("ML_OPS_API_URL")
+                .unwrap_or_else(|_| "http://ml-ops-api:8083".to_string()),
+            circuit_breaker: CircuitBreakerConfig {
+                failure_threshold: 3,
+                success_threshold: 1,
+                timeout_secs: 120,
             },
         })
     }

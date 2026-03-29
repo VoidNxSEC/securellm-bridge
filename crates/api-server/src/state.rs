@@ -113,6 +113,7 @@ use securellm_providers::deepseek::{DeepSeekConfig, DeepSeekProvider};
 use securellm_providers::gemini::{GeminiConfig, GeminiProvider};
 use securellm_providers::groq::{GroqConfig, GroqProvider};
 use securellm_providers::llamacpp::LlamaCppProvider;
+use securellm_providers::ml_ops::MlOpsProvider;
 use securellm_providers::nvidia::{NvidiaConfig, NvidiaProvider};
 use securellm_providers::openai::{OpenAIConfig, OpenAIProvider};
 
@@ -227,6 +228,19 @@ impl ProviderManager {
                     providers.push(Arc::new(p));
                     breakers.insert(
                         "openai".to_string(),
+                        CircuitBreaker::new(cfg.circuit_breaker.clone()),
+                    );
+                }
+            }
+        }
+
+        // Add ml-ops-api provider (local GPU inference bridge)
+        if let Some(cfg) = &config.providers.ml_ops {
+            if cfg.enabled {
+                if let Ok(p) = MlOpsProvider::new(&cfg.base_url) {
+                    providers.push(Arc::new(p));
+                    breakers.insert(
+                        "ml-ops".to_string(),
                         CircuitBreaker::new(cfg.circuit_breaker.clone()),
                     );
                 }

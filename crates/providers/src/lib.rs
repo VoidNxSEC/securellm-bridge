@@ -5,6 +5,7 @@ pub mod deepseek;
 pub mod gemini;
 pub mod groq;
 pub mod llamacpp;
+pub mod ml_ops;
 pub mod nvidia;
 pub mod openai;
 
