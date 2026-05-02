@@ -115,8 +115,11 @@ fn render_ui(f: &mut Frame, app: &TuiApp) {
         .constraints([Constraint::Percentage(54), Constraint::Percentage(46)])
         .split(main_columns[2]);
 
-    app.chat_panel
-        .render(f, left_chunks[0], app.focused_panel == app::FocusedPanel::Chat);
+    app.chat_panel.render(
+        f,
+        left_chunks[0],
+        app.focused_panel == app::FocusedPanel::Chat,
+    );
     app.context_panel.render(
         f,
         left_chunks[1],
@@ -139,10 +142,16 @@ fn render_ui(f: &mut Frame, app: &TuiApp) {
         );
     }
 
-    app.task_panel
-        .render(f, right_chunks[0], app.focused_panel == app::FocusedPanel::Tasks);
-    app.logs_panel
-        .render(f, right_chunks[1], app.focused_panel == app::FocusedPanel::Logs);
+    app.task_panel.render(
+        f,
+        right_chunks[0],
+        app.focused_panel == app::FocusedPanel::Tasks,
+    );
+    app.logs_panel.render(
+        f,
+        right_chunks[1],
+        app.focused_panel == app::FocusedPanel::Logs,
+    );
     app.status_bar.render(f, main_chunks[2], app);
 }
 

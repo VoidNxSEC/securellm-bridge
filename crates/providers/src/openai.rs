@@ -348,9 +348,7 @@ impl LLMProvider for OpenAIProvider {
             ModelInfo {
                 id: "gpt-4-turbo".to_string(),
                 name: "GPT-4 Turbo".to_string(),
-                description: Some(
-                    "Most capable GPT-4 model with 128K context window".to_string(),
-                ),
+                description: Some("Most capable GPT-4 model with 128K context window".to_string()),
                 context_window: Some(128000),
                 max_output_tokens: Some(4096),
                 capabilities: vec!["chat".to_string(), "vision".to_string()],

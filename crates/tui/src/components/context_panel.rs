@@ -81,9 +81,7 @@ impl ContextPanel {
                     Span::styled("📊 ", Style::default().fg(title_color)),
                     Span::styled(
                         "Context",
-                        Style::default()
-                            .fg(FG_PRIMARY)
-                            .add_modifier(Modifier::BOLD),
+                        Style::default().fg(FG_PRIMARY).add_modifier(Modifier::BOLD),
                     ),
                 ])
                 .style(Style::default().bg(BG_CARD)),

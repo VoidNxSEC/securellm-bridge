@@ -237,10 +237,7 @@ impl LLMProvider for AnthropicProvider {
         let req_builder = self
             .client
             .post(&url)
-            .header(
-                "x-api-key",
-                self.config.api_key.expose_secret(),
-            )
+            .header("x-api-key", self.config.api_key.expose_secret())
             .header("anthropic-version", ANTHROPIC_VERSION)
             .header("Content-Type", "application/json")
             .json(&anthropic_request);

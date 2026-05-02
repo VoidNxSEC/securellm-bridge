@@ -315,7 +315,9 @@ impl AgentOverlay {
         let mut parts = trimmed.splitn(2, char::is_whitespace);
         let first = parts.next().unwrap_or_default();
         let rest = parts.next().unwrap_or("").trim();
-        let alias = ALIAS_HELPERS.iter().find(|helper| helper.trigger == first)?;
+        let alias = ALIAS_HELPERS
+            .iter()
+            .find(|helper| helper.trigger == first)?;
 
         match alias.action {
             HelperAction::DirectCommand(command) => Some(command.to_string()),
@@ -540,7 +542,10 @@ fn render(f: &mut Frame, app: &AgentOverlay) {
     };
     let cwd = std::env::current_dir()
         .ok()
-        .and_then(|path| path.file_name().map(|name| name.to_string_lossy().to_string()))
+        .and_then(|path| {
+            path.file_name()
+                .map(|name| name.to_string_lossy().to_string())
+        })
         .unwrap_or_else(|| "/".to_string());
 
     let outer = Block::default()
@@ -555,14 +560,22 @@ fn render(f: &mut Frame, app: &AgentOverlay) {
             Span::styled("•", Style::default().fg(DIM)),
             Span::styled(
                 format!(" {} ", app.status_title()),
-                Style::default().fg(app.status_color()).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(app.status_color())
+                    .add_modifier(Modifier::BOLD),
             ),
         ]))
         .title_bottom(Line::from(vec![
-            Span::styled("Enter", Style::default().fg(BRIGHT).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "Enter",
+                Style::default().fg(BRIGHT).add_modifier(Modifier::BOLD),
+            ),
             Span::styled(" generate/execute", Style::default().fg(DIM)),
             Span::styled("  •  ", Style::default().fg(DIM)),
-            Span::styled("Esc", Style::default().fg(BRIGHT).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "Esc",
+                Style::default().fg(BRIGHT).add_modifier(Modifier::BOLD),
+            ),
             Span::styled(" close", Style::default().fg(DIM)),
         ]));
     f.render_widget(outer, overlay);
@@ -589,15 +602,18 @@ fn render(f: &mut Frame, app: &AgentOverlay) {
             Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
         ),
         Span::styled("  •  ", Style::default().fg(DIM)),
-        Span::styled(
-            cwd,
-            Style::default().fg(MAUVE).add_modifier(Modifier::BOLD),
-        ),
+        Span::styled(cwd, Style::default().fg(MAUVE).add_modifier(Modifier::BOLD)),
         Span::styled("  •  ", Style::default().fg(DIM)),
-        Span::styled(app.activity_glyph(), Style::default().fg(app.status_color())),
+        Span::styled(
+            app.activity_glyph(),
+            Style::default().fg(app.status_color()),
+        ),
         Span::styled(" ", Style::default().fg(DIM)),
         Span::styled(app.status_title(), Style::default().fg(app.status_color())),
-        Span::styled("  •  low-latency command translation", Style::default().fg(DIM)),
+        Span::styled(
+            "  •  low-latency command translation",
+            Style::default().fg(DIM),
+        ),
     ])])
     .style(Style::default().bg(BG_BASE));
     f.render_widget(context_strip, chunks[0]);
@@ -669,11 +685,17 @@ fn render(f: &mut Frame, app: &AgentOverlay) {
 
     let composer = Paragraph::new(vec![
         Line::from(vec![
-            Span::styled("Input", Style::default().fg(MAUVE).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "Input",
+                Style::default().fg(MAUVE).add_modifier(Modifier::BOLD),
+            ),
             Span::styled("  refine intent inline", Style::default().fg(DIM)),
         ]),
         Line::from(vec![
-            Span::styled("› ", Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "› ",
+                Style::default().fg(ACCENT).add_modifier(Modifier::BOLD),
+            ),
             if app.input.is_empty() {
                 Span::styled(
                     "Ask for a shell action...",

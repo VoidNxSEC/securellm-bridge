@@ -90,8 +90,10 @@ impl TuiApp {
         if !self.input_buffer.is_empty() {
             let message = self.input_buffer.clone();
             self.chat_panel.add_message("user", &message);
-            self.logs_panel
-                .add_log("INFO", &format!("Queued user message ({} chars)", message.len()));
+            self.logs_panel.add_log(
+                "INFO",
+                &format!("Queued user message ({} chars)", message.len()),
+            );
             self.input_buffer.clear();
 
             // Send to LlamaCpp provider
@@ -122,7 +124,8 @@ impl TuiApp {
                         Ok(response) => {
                             if let Ok(text) = response.text() {
                                 self.chat_panel.add_message("assistant", &text);
-                                self.logs_panel.add_log("INFO", "Provider response received");
+                                self.logs_panel
+                                    .add_log("INFO", "Provider response received");
                             }
                         }
                         Err(e) => {

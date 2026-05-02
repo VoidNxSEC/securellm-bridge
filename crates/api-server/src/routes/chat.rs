@@ -215,11 +215,15 @@ pub async fn chat_completions(
                     let ct = completion_tokens;
                     let dur_ms = duration_ms;
                     tokio::spawn(async move {
-                        publisher.publish_llm_request(rid, &m_name, &p_name, pt).await;
+                        publisher
+                            .publish_llm_request(rid, &m_name, &p_name, pt)
+                            .await;
                         publisher
                             .publish_llm_response(rid, &m_name, &p_name, ct, dur_ms, "success")
                             .await;
-                        publisher.publish_cost_event(&p_name, &m_name, cost, pt + ct).await;
+                        publisher
+                            .publish_cost_event(&p_name, &m_name, cost, pt + ct)
+                            .await;
                     });
                 }
 
@@ -328,7 +332,10 @@ async fn create_completion(
             ("deepseek".to_string(), "deepseek-chat".to_string()),
             ("groq".to_string(), "llama-3.3-70b-versatile".to_string()),
             ("openai".to_string(), "gpt-4-turbo".to_string()),
-            ("anthropic".to_string(), "claude-3-sonnet-20240229".to_string()),
+            (
+                "anthropic".to_string(),
+                "claude-3-sonnet-20240229".to_string(),
+            ),
         ]
     };
 

@@ -55,9 +55,7 @@ impl StatusBar {
                 Span::styled("Provider ", Style::default().fg(FG_MUTED)),
                 Span::styled(
                     provider.0,
-                    Style::default()
-                        .fg(provider.1)
-                        .add_modifier(Modifier::BOLD),
+                    Style::default().fg(provider.1).add_modifier(Modifier::BOLD),
                 ),
                 Span::raw("  "),
                 Span::styled("│", Style::default().fg(BORDER)),

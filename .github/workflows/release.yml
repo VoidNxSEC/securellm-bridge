@@ -1,0 +1,44 @@
+name: Publish GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: self-hosted
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract tag name
+        id: tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Check for Release Notes
+        id: notes
+        run: |
+          NOTES_FILE="RELEASE-${{ steps.tag.outputs.tag }}.md"
+          if [ -f "$NOTES_FILE" ]; then
+            echo "notes_file=$NOTES_FILE" >> $GITHUB_OUTPUT
+            echo "Release notes found: $NOTES_FILE"
+          else
+            echo "notes_file=" >> $GITHUB_OUTPUT
+            echo "No specific release notes found for ${{ steps.tag.outputs.tag }}. Will use auto-generated."
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.tag.outputs.tag }}
+          body_path: ${{ steps.notes.outputs.notes_file }}
+          generate_release_notes: ${{ steps.notes.outputs.notes_file == '' }}
+          draft: false
+          prerelease: false

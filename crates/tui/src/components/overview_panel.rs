@@ -86,21 +86,19 @@ impl OverviewPanel {
             ]),
         ];
 
-        let paragraph = Paragraph::new(content)
-            .wrap(Wrap { trim: true })
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(border))
-                    .title(vec![
-                        Span::styled("◈ ", Style::default().fg(title_color)),
-                        Span::styled(
-                            "Command Center",
-                            Style::default().fg(FG_PRIMARY).add_modifier(Modifier::BOLD),
-                        ),
-                    ])
-                    .style(Style::default().bg(BG_CARD)),
-            );
+        let paragraph = Paragraph::new(content).wrap(Wrap { trim: true }).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(border))
+                .title(vec![
+                    Span::styled("◈ ", Style::default().fg(title_color)),
+                    Span::styled(
+                        "Command Center",
+                        Style::default().fg(FG_PRIMARY).add_modifier(Modifier::BOLD),
+                    ),
+                ])
+                .style(Style::default().bg(BG_CARD)),
+        );
 
         f.render_widget(paragraph, area);
     }

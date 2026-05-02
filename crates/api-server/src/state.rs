@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use deadpool_redis::{Config as RedisConfig, Pool as RedisPool, Runtime};
-use prometheus::{CounterVec, HistogramVec, Opts, HistogramOpts, Registry};
+use prometheus::{CounterVec, HistogramOpts, HistogramVec, Opts, Registry};
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -51,8 +51,8 @@ impl AppState {
         let metrics = Arc::new(MetricsCollector::new());
 
         // NATS publisher (non-fatal if NATS is unavailable)
-        let nats_url = std::env::var("NATS_URL")
-            .unwrap_or_else(|_| "nats://localhost:4222".to_string());
+        let nats_url =
+            std::env::var("NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".to_string());
         let nats_publisher = Arc::new(NatsPublisher::connect(&nats_url).await);
 
         let audit_sink = Arc::new(SqliteAuditSink::new(db_pool.clone()));
@@ -198,7 +198,8 @@ impl ProviderManager {
         if let Some(cfg) = &config.providers.llamacpp {
             if cfg.enabled {
                 // Parse port from base_url (e.g., "http://localhost:5001")
-                let port = cfg.base_url
+                let port = cfg
+                    .base_url
                     .split(':')
                     .last()
                     .and_then(|p| p.parse::<u16>().ok())

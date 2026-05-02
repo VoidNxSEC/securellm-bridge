@@ -180,9 +180,8 @@
             libclang.lib
 
             # Node.js for MCP server
-            nodejs
-            nodePackages.typescript
-            nodePackages.npm
+            nodejs_24
+            typescript
 
             # Build dependencies
             pkg-config

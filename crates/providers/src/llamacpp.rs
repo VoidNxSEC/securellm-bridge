@@ -225,10 +225,7 @@ impl LLMProvider for LlamaCppProvider {
                     .data
                     .into_iter()
                     .map(|model| {
-                        let context_window = model
-                            .meta
-                            .as_ref()
-                            .and_then(|m| m.n_ctx_train);
+                        let context_window = model.meta.as_ref().and_then(|m| m.n_ctx_train);
 
                         ModelInfo {
                             id: model.id.clone(),
