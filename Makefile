@@ -31,6 +31,11 @@ test-verbose: ## Run tests with verbose output
 	@echo "$(BLUE)Running tests (verbose)...$(NC)"
 	cargo test --all -- --nocapture
 
+gateway-test: ## Run gateway crate tests + clippy (fast iteration)
+	@echo "$(BLUE)Running gateway tests...$(NC)"
+	cargo test -p securellm-gateway
+	cargo clippy -p securellm-gateway --all-targets -- -D warnings
+
 check: ## Quick check if code compiles
 	@echo "$(BLUE)Checking compilation...$(NC)"
 	cargo check --all

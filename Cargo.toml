@@ -10,7 +10,7 @@ members = [
     "crates/task-manager",
     "crates/context-manager",
     "crates/voice-agents",
-    "crates/agent-tui",
+    "crates/gateway",
 ]
 resolver = "2"
 
@@ -73,7 +73,7 @@ clap = { version = "4.5", features = ["derive", "env"] }
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite"] }
 
 # Utilities
-uuid = { version = "1.10", features = ["v4", "serde"] }
+uuid = { version = "1.10", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 bytes = "1.7"
 dashmap = "6.0"
@@ -97,6 +97,16 @@ tiktoken-rs = "0.5"
 
 # LRU Cache
 lru = "0.12"
+
+# MCP / Gateway (gateway crate)
+rmcp = { version = "1.7", features = ["server", "macros", "transport-io", "transport-streamable-http-server"] }
+octocrab = "0.39"
+base64 = "0.22"
+tempfile = "3"
+sha2 = "0.10"
+
+[patch.crates-io]
+rmcp = { path = "vendor/rmcp-1.7.0" }
 
 [workspace.dependencies.wiremock]
 version = "0.6"

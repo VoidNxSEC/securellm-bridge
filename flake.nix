@@ -73,6 +73,11 @@
             fi
 
             # Copy api-server if it exists
+
+            # Copy cgroup-helper if it exists (ADR-0001 Phase 3)
+            if [ -f target/release/cgroup-helper ]; then
+              cp target/release/cgroup-helper $out/bin/
+            fi
             if [ -f target/release/securellm-api-server ]; then
               cp target/release/securellm-api-server $out/bin/
             fi
@@ -260,5 +265,8 @@
           mcp-build = mcpServer;
         };
       }
-    );
+    ) // {
+      # NixOS Module: securellm-bridge sandbox (ADR-0001 Phase 3)
+      nixosModules.sandbox = import ./nix/modules/sandbox.nix;
+    };
 }
