@@ -258,7 +258,7 @@ RUST_LOG=debug securellm -v chat -p deepseek -m deepseek-chat "test"
 ## Próximos Passos
 
 1. ✅ Configure o DeepSeek (já funcionando!)
-2. 🔜 Aguarde implementação do OpenAI
+2. ✅ Configure o OpenAI com `OPENAI_API_KEY` ou `SECURELLM_API_KEY`
 3. 🔜 Aguarde implementação do Anthropic
 4. 🔜 Teste o Ollama para modelos locais
 

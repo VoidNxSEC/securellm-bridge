@@ -361,7 +361,7 @@ impl LLMProvider for NovoProvider {
 - [ ] PII detection e sanitization
 
 ### 📋 Fase 3: Provider Integration
-- [ ] OpenAI adapter
+- [x] OpenAI adapter
 - [ ] Anthropic adapter
 - [ ] Ollama (local) adapter
 - [ ] llama.cpp integration
