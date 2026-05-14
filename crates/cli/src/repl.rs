@@ -1,9 +1,9 @@
+use crate::provider_factory;
 use anyhow::Result;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 use inquire::Select;
-use securellm_core::{LLMProvider, Message, MessageContent, MessageRole, Request};
-use securellm_providers::deepseek::{DeepSeekConfig, DeepSeekProvider};
+use securellm_core::{Message, MessageContent, MessageRole, Request};
 use std::io::{self, Write};
 
 pub async fn run_repl(
@@ -22,29 +22,21 @@ pub async fn run_repl(
 
     let provider_name = match provider_name {
         Some(p) => p,
-        None => Select::new("Select Provider:", vec!["deepseek", "openai", "anthropic"])
-            .prompt()?
-            .to_string(),
+        None => Select::new(
+            "Select Provider:",
+            provider_factory::IMPLEMENTED_PROVIDERS.to_vec(),
+        )
+        .prompt()?
+        .to_string(),
     };
 
-    // Initialize provider (Simplified for now - strictly DeepSeek supported in this demo)
-    if provider_name != "deepseek" {
-        println!(
-            "{}",
-            "Currently only 'deepseek' is fully supported in REPL.".yellow()
-        );
-        // Simple confirmation without inquire specific Confirm to reduce dependencies if needed
-        println!("Press Enter to continue or Ctrl+C to abort...");
-        let mut dummy = String::new();
-        io::stdin().read_line(&mut dummy)?;
-    }
-
-    let config = DeepSeekConfig::new(api_key);
-    let provider = DeepSeekProvider::new(config)?;
+    let provider = provider_factory::build_provider(&provider_name, api_key, true)?;
 
     let model = match model_name {
         Some(m) => m,
-        None => "deepseek-chat".to_string(), // Default
+        None => provider_factory::default_model(&provider_name)
+            .ok_or_else(|| anyhow::anyhow!("Provider '{}' not yet implemented", provider_name))?
+            .to_string(),
     };
 
     println!(

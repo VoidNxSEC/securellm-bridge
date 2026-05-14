@@ -2,10 +2,10 @@ use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{generate, Shell};
 use securellm_core::*;
-use securellm_providers::deepseek::{DeepSeekConfig, DeepSeekProvider};
 use std::io;
 use tracing_subscriber;
 
+mod provider_factory;
 mod repl;
 
 #[derive(Parser)]
@@ -44,7 +44,7 @@ enum Commands {
         message: String,
 
         /// API key (can also use environment variable)
-        #[arg(long, env = "SECURELLM_API_KEY")]
+        #[arg(long)]
         api_key: Option<String>,
 
         /// System prompt
@@ -67,7 +67,7 @@ enum Commands {
         provider: String,
 
         /// API key
-        #[arg(long, env = "SECURELLM_API_KEY")]
+        #[arg(long)]
         api_key: Option<String>,
     },
 
@@ -78,7 +78,7 @@ enum Commands {
         provider: String,
 
         /// API key
-        #[arg(long, env = "SECURELLM_API_KEY")]
+        #[arg(long)]
         api_key: Option<String>,
     },
 
@@ -100,7 +100,7 @@ enum Commands {
         model: Option<String>,
 
         /// API key
-        #[arg(long, env = "SECURELLM_API_KEY")]
+        #[arg(long)]
         api_key: Option<String>,
 
         /// System prompt
@@ -195,152 +195,107 @@ async fn handle_chat(
     max_tokens: u32,
     temperature: f32,
 ) -> Result<()> {
-    let api_key = api_key.ok_or_else(|| {
-        anyhow::anyhow!(
-            "API key is required. Use --api-key or set SECURELLM_API_KEY environment variable"
-        )
-    })?;
+    let api_key = provider_factory::resolve_api_key(&provider, api_key)?;
 
     println!("🔒 SecureLLM Bridge");
     println!("Provider: {}", provider);
     println!("Model: {}", model);
     println!();
 
-    match provider.as_str() {
-        "deepseek" => {
-            let config = DeepSeekConfig::new(api_key).with_logging(true);
+    let provider_impl = provider_factory::build_provider(&provider, api_key, true)?;
 
-            let provider = DeepSeekProvider::new(config)
-                .map_err(|e| anyhow::anyhow!("Provider error: {}", e))?;
+    // Build request
+    let mut request = Request::new(provider.clone(), model)
+        .add_message(Message {
+            role: MessageRole::User,
+            content: MessageContent::Text(message),
+            name: None,
+            metadata: None,
+        })
+        .with_max_tokens(max_tokens)
+        .with_temperature(temperature);
 
-            // Build request
-            let mut request = Request::new("deepseek", model)
-                .add_message(Message {
-                    role: MessageRole::User,
-                    content: MessageContent::Text(message),
-                    name: None,
-                    metadata: None,
-                })
-                .with_max_tokens(max_tokens)
-                .with_temperature(temperature);
-
-            if let Some(sys) = system {
-                request = request.with_system(sys);
-            }
-
-            // Send request
-            println!("⏳ Sending request...");
-            let response = provider
-                .send_request(request)
-                .await
-                .map_err(|e| anyhow::anyhow!("Request failed: {}", e))?;
-
-            // Print response
-            println!();
-            println!("✅ Response:");
-            println!("{}", response.text().map_err(|e| anyhow::anyhow!(e))?);
-            println!();
-            println!("📊 Usage:");
-            println!("  Prompt tokens: {}", response.usage.prompt_tokens);
-            println!("  Completion tokens: {}", response.usage.completion_tokens);
-            println!("  Total tokens: {}", response.usage.total_tokens);
-            println!(
-                "  Processing time: {}ms",
-                response.metadata.processing_time_ms
-            );
-        }
-        _ => {
-            anyhow::bail!(
-                "Provider '{}' not yet implemented. Available: deepseek",
-                provider
-            );
-        }
+    if let Some(sys) = system {
+        request = request.with_system(sys);
     }
+
+    // Send request
+    println!("⏳ Sending request...");
+    let response = provider_impl
+        .send_request(request)
+        .await
+        .map_err(|e| anyhow::anyhow!("Request failed: {}", e))?;
+
+    // Print response
+    println!();
+    println!("✅ Response:");
+    println!("{}", response.text().map_err(|e| anyhow::anyhow!(e))?);
+    println!();
+    println!("📊 Usage:");
+    println!("  Prompt tokens: {}", response.usage.prompt_tokens);
+    println!("  Completion tokens: {}", response.usage.completion_tokens);
+    println!("  Total tokens: {}", response.usage.total_tokens);
+    println!(
+        "  Processing time: {}ms",
+        response.metadata.processing_time_ms
+    );
 
     Ok(())
 }
 
 async fn handle_health(provider: String, api_key: Option<String>) -> Result<()> {
-    let api_key = api_key.ok_or_else(|| {
-        anyhow::anyhow!(
-            "API key is required. Use --api-key or set SECURELLM_API_KEY environment variable"
-        )
-    })?;
+    let api_key = provider_factory::resolve_api_key(&provider, api_key)?;
+    let provider_impl = provider_factory::build_provider(&provider, api_key, false)?;
 
-    match provider.as_str() {
-        "deepseek" => {
-            let config = DeepSeekConfig::new(api_key);
-            let provider = DeepSeekProvider::new(config)
-                .map_err(|e| anyhow::anyhow!("Provider error: {}", e))?;
+    println!("🏥 Checking {} health...", provider);
+    let health = provider_impl
+        .health_check()
+        .await
+        .map_err(|e| anyhow::anyhow!("Health check failed: {}", e))?;
 
-            println!("🏥 Checking DeepSeek health...");
-            let health = provider
-                .health_check()
-                .await
-                .map_err(|e| anyhow::anyhow!("Health check failed: {}", e))?;
+    let status_icon = match health.status {
+        HealthStatus::Healthy => "✅",
+        HealthStatus::Degraded => "⚠️",
+        HealthStatus::Unhealthy => "❌",
+        HealthStatus::Unknown => "❓",
+    };
 
-            let status_icon = match health.status {
-                HealthStatus::Healthy => "✅",
-                HealthStatus::Degraded => "⚠️",
-                HealthStatus::Unhealthy => "❌",
-                HealthStatus::Unknown => "❓",
-            };
-
-            println!("{} Status: {:?}", status_icon, health.status);
-            if let Some(latency) = health.latency_ms {
-                println!("⏱️  Latency: {}ms", latency);
-            }
-        }
-        _ => {
-            anyhow::bail!("Provider '{}' not yet implemented", provider);
-        }
+    println!("{} Status: {:?}", status_icon, health.status);
+    if let Some(latency) = health.latency_ms {
+        println!("⏱️  Latency: {}ms", latency);
     }
 
     Ok(())
 }
 
 async fn handle_models(provider: String, api_key: Option<String>) -> Result<()> {
-    let api_key = api_key.ok_or_else(|| {
-        anyhow::anyhow!(
-            "API key is required. Use --api-key or set SECURELLM_API_KEY environment variable"
-        )
-    })?;
+    let api_key = provider_factory::resolve_api_key(&provider, api_key)?;
+    let provider_impl = provider_factory::build_provider(&provider, api_key, false)?;
 
-    match provider.as_str() {
-        "deepseek" => {
-            let config = DeepSeekConfig::new(api_key);
-            let provider = DeepSeekProvider::new(config)
-                .map_err(|e| anyhow::anyhow!("Provider error: {}", e))?;
+    println!("📋 Available {} models:", provider);
+    println!();
 
-            println!("📋 Available DeepSeek models:");
-            println!();
+    let models = provider_impl
+        .list_models()
+        .await
+        .map_err(|e| anyhow::anyhow!("List models failed: {}", e))?;
 
-            let models = provider
-                .list_models()
-                .await
-                .map_err(|e| anyhow::anyhow!("List models failed: {}", e))?;
-
-            for model in models {
-                println!("🤖 {}", model.id);
-                println!("   Name: {}", model.name);
-                if let Some(desc) = &model.description {
-                    println!("   Description: {}", desc);
-                }
-                if let Some(ctx) = model.context_window {
-                    println!("   Context: {} tokens", ctx);
-                }
-                if let Some(pricing) = &model.pricing {
-                    println!(
-                        "   Pricing: ${:.4}/1K input, ${:.4}/1K output",
-                        pricing.input_cost_per_1k, pricing.output_cost_per_1k
-                    );
-                }
-                println!();
-            }
+    for model in models {
+        println!("🤖 {}", model.id);
+        println!("   Name: {}", model.name);
+        if let Some(desc) = &model.description {
+            println!("   Description: {}", desc);
         }
-        _ => {
-            anyhow::bail!("Provider '{}' not yet implemented", provider);
+        if let Some(ctx) = model.context_window {
+            println!("   Context: {} tokens", ctx);
         }
+        if let Some(pricing) = &model.pricing {
+            println!(
+                "   Pricing: ${:.4}/1K input, ${:.4}/1K output",
+                pricing.input_cost_per_1k, pricing.output_cost_per_1k
+            );
+        }
+        println!();
     }
 
     Ok(())
@@ -350,54 +305,37 @@ async fn handle_info(provider: String) -> Result<()> {
     println!("ℹ️  Provider Information: {}", provider);
     println!();
 
-    match provider.as_str() {
-        "deepseek" => {
-            // Create a dummy provider just to get capabilities
-            let config = DeepSeekConfig::new("dummy");
-            let provider = DeepSeekProvider::new(config)
-                .map_err(|e| anyhow::anyhow!("Provider error: {}", e))?;
+    let provider_impl = provider_factory::build_info_provider(&provider)?;
+    let caps = provider_impl.capabilities();
 
-            let caps = provider.capabilities();
-
-            println!("Capabilities:");
-            println!(
-                "  ✓ Streaming: {}",
-                if caps.streaming { "Yes" } else { "No" }
-            );
-            println!(
-                "  ✓ Function Calling: {}",
-                if caps.function_calling { "Yes" } else { "No" }
-            );
-            println!("  ✓ Vision: {}", if caps.vision { "Yes" } else { "No" });
-            println!(
-                "  ✓ Embeddings: {}",
-                if caps.embeddings { "Yes" } else { "No" }
-            );
-            println!(
-                "  ✓ System Prompts: {}",
-                if caps.supports_system_prompts {
-                    "Yes"
-                } else {
-                    "No"
-                }
-            );
-
-            if let Some(max) = caps.max_tokens {
-                println!("  ✓ Max Output Tokens: {}", max);
-            }
-            if let Some(ctx) = caps.max_context_window {
-                println!("  ✓ Max Context Window: {}", ctx);
-            }
+    println!("Capabilities:");
+    println!(
+        "  ✓ Streaming: {}",
+        if caps.streaming { "Yes" } else { "No" }
+    );
+    println!(
+        "  ✓ Function Calling: {}",
+        if caps.function_calling { "Yes" } else { "No" }
+    );
+    println!("  ✓ Vision: {}", if caps.vision { "Yes" } else { "No" });
+    println!(
+        "  ✓ Embeddings: {}",
+        if caps.embeddings { "Yes" } else { "No" }
+    );
+    println!(
+        "  ✓ System Prompts: {}",
+        if caps.supports_system_prompts {
+            "Yes"
+        } else {
+            "No"
         }
-        _ => {
-            println!("Provider '{}' not yet implemented", provider);
-            println!();
-            println!("Available providers:");
-            println!("  - deepseek (implemented)");
-            println!("  - openai (coming soon)");
-            println!("  - anthropic (coming soon)");
-            println!("  - ollama (coming soon)");
-        }
+    );
+
+    if let Some(max) = caps.max_tokens {
+        println!("  ✓ Max Output Tokens: {}", max);
+    }
+    if let Some(ctx) = caps.max_context_window {
+        println!("  ✓ Max Context Window: {}", ctx);
     }
 
     Ok(())
