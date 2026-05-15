@@ -86,8 +86,8 @@
 
 | # | Step | Arquivos | Estimativa |
 |---|---|---|---|
-| 5.1 | SOPS-encrypted PAT em `/run/secrets/gateway_github_pat`. Adicionar fonte ao `GatewayConfig::from_env` na ordem `GATEWAY_GITHUB_PAT` (env) → `/run/secrets/gateway_github_pat` (SOPS) → falha. | `crates/gateway/src/config.rs` | 1h |
-| 5.2 | Systemd unit `securellm-gateway.service` com `LoadCredential=` pro SOPS path + restart on-failure + journal logging. | `nix/modules/gateway-service.nix` ou similar | 1.5h |
+| 5.1 | ✅ SOPS-encrypted PAT em `/run/secrets/gateway_github_pat`. Fonte em `GatewayConfig::from_env`: `GATEWAY_GITHUB_PAT` env → `GATEWAY_GITHUB_PAT_FILE` → `/run/secrets/gateway_github_pat` → falha. | `crates/gateway/src/config.rs`, `crates/gateway/DEPLOY.md` | feito |
+| 5.2 | ✅ NixOS module para `securellm-gateway.service` com `LoadCredential=` pro SOPS path, restart on-failure, journal logging e hardening básico. | `nix/modules/gateway-service.nix`, `flake.nix`, `crates/gateway/DEPLOY.md` | feito |
 | 5.3 | Observability: tracing layer OTLP opcional via `tracing-opentelemetry`. Métricas básicas: `gateway_tool_calls_total{tool,outcome}`, `gateway_audit_writes_total`, `gateway_active_agents`. | `crates/gateway/src/observability.rs` | 3h |
 | 5.4 | Health check endpoint `GET /health` em modo HTTP. Retorna `{audit_writable: bool, github_reachable: bool, allowlist_size: int}`. | `crates/gateway/src/transport.rs` | 1h |
 | 5.5 | Logrotate / size cap pro `events.jsonl`. Rotação por dia em `events.YYYYMMDD.jsonl`, último symlink `events.jsonl`. | `crates/gateway/src/audit.rs` | 2h |

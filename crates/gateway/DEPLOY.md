@@ -40,6 +40,15 @@ export GATEWAY_RATE_LIMIT_PER_MINUTE='10'
 
 If `GATEWAY_BEARER_TOKEN` is unset, the static bearer fallback is disabled and HTTP clients must use OAuth/PKCE.
 
+For production, prefer a file-backed GitHub PAT instead of exporting the PAT in the process environment:
+
+```bash
+unset GATEWAY_GITHUB_PAT
+export GATEWAY_GITHUB_PAT_FILE='/run/secrets/gateway_github_pat'
+```
+
+If neither `GATEWAY_GITHUB_PAT` nor `GATEWAY_GITHUB_PAT_FILE` is set, the gateway reads `/run/secrets/gateway_github_pat`. The file may contain a trailing newline; it is trimmed before use.
+
 ## Run Locally
 
 ```bash
@@ -138,3 +147,29 @@ The HTTP test covers:
 - Static bearer accept/reject.
 - OAuth/PKCE authorization-code flow into `tools/list`.
 - Rate-limit `429` plus `rate_limited` audit.
+
+## NixOS Service
+
+The flake exports `nixosModules.gateway-service`. The module creates `securellm-gateway.service`, loads the PAT with systemd `LoadCredential=`, and passes the credential path through `GATEWAY_GITHUB_PAT_FILE`.
+
+Example:
+
+```nix
+{
+  imports = [
+    inputs.securellm-bridge.nixosModules.gateway-service
+  ];
+
+  services.securellm-bridge.gateway = {
+    enable = true;
+    package = inputs.securellm-bridge.packages.${pkgs.system}.gateway;
+    repoAllowlist = [ "owner/repo" ];
+    agentId = "claude-web-agent-01";
+    listenAddr = "127.0.0.1:8765";
+    githubPatFile = "/run/secrets/gateway_github_pat";
+    rateLimitPerMinute = 10;
+  };
+}
+```
+
+`packages.${pkgs.system}.gateway` is the intended dedicated package target for the next operational step. Until that package exists, set `package` to any derivation that provides `bin/gateway-mcp`.

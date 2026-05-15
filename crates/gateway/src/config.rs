@@ -2,8 +2,10 @@ use crate::errors::{GatewayError, Result};
 use secrecy::SecretString;
 use std::net::SocketAddr;
 use std::num::NonZeroU32;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
+
+const DEFAULT_PAT_SECRET_PATH: &str = "/run/secrets/gateway_github_pat";
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RepoSlug {
@@ -93,12 +95,7 @@ impl std::fmt::Debug for GatewayConfig {
 
 impl GatewayConfig {
     pub fn from_env() -> Result<Self> {
-        let pat_raw = std::env::var("GATEWAY_GITHUB_PAT")
-            .map_err(|_| GatewayError::Config("missing GATEWAY_GITHUB_PAT env var".into()))?;
-        if pat_raw.trim().is_empty() {
-            return Err(GatewayError::Config("GATEWAY_GITHUB_PAT is empty".into()));
-        }
-        let pat = SecretString::new(pat_raw);
+        let pat = load_github_pat()?;
 
         let allowlist_raw = std::env::var("GATEWAY_REPO_ALLOWLIST")
             .map_err(|_| GatewayError::Config("missing GATEWAY_REPO_ALLOWLIST env var".into()))?;
@@ -212,9 +209,42 @@ fn parse_rate_limit_per_minute(raw: &str) -> Result<NonZeroU32> {
     })
 }
 
+fn load_github_pat() -> Result<SecretString> {
+    match std::env::var("GATEWAY_GITHUB_PAT") {
+        Ok(s) if !s.trim().is_empty() => return Ok(SecretString::new(s)),
+        Ok(_) => return Err(GatewayError::Config("GATEWAY_GITHUB_PAT is empty".into())),
+        Err(_) => {}
+    }
+
+    let secret_path = std::env::var("GATEWAY_GITHUB_PAT_FILE")
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(DEFAULT_PAT_SECRET_PATH));
+
+    read_pat_file(&secret_path).map_err(|file_error| {
+        GatewayError::Config(format!(
+            "missing GATEWAY_GITHUB_PAT env var and could not read GitHub PAT file {}: {file_error}",
+            secret_path.display()
+        ))
+    })
+}
+
+fn read_pat_file(path: &Path) -> Result<SecretString> {
+    let raw = std::fs::read_to_string(path)
+        .map_err(|e| GatewayError::Config(format!("read secret file: {e}")))?;
+    let pat = raw.trim();
+    if pat.is_empty() {
+        return Err(GatewayError::Config("secret file is empty".into()));
+    }
+    Ok(SecretString::new(pat.to_string()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use secrecy::ExposeSecret;
+    use tempfile::TempDir;
 
     #[test]
     fn gateway_transport_parses_supported_modes() {
@@ -253,5 +283,25 @@ mod tests {
         assert!(err
             .to_string()
             .contains("invalid GATEWAY_RATE_LIMIT_PER_MINUTE"));
+    }
+
+    #[test]
+    fn read_pat_file_trims_trailing_newline() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("gateway_github_pat");
+        std::fs::write(&path, "ghp_file_secret\n").unwrap();
+
+        let pat = read_pat_file(&path).unwrap();
+        assert_eq!(pat.expose_secret(), "ghp_file_secret");
+    }
+
+    #[test]
+    fn read_pat_file_rejects_empty_secret() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("gateway_github_pat");
+        std::fs::write(&path, "\n").unwrap();
+
+        let err = read_pat_file(&path).expect_err("empty secret file must fail closed");
+        assert!(err.to_string().contains("secret file is empty"));
     }
 }
