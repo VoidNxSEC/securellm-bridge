@@ -16,6 +16,7 @@ mod sliding_window;
 mod tokenizer;
 
 pub use compression::Compressor;
+pub use tokenizer::{CostEstimate, Tokenizer, TokenizerEncoding};
 pub use sliding_window::SlidingWindow;
 
 /// Represents a chat message
