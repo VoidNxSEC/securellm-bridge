@@ -94,48 +94,51 @@
           };
         };
 
-        # MCP Server (TypeScript/Node.js)
-        mcpServer = pkgs.buildNpmPackage {
-          pname = "securellm-bridge-mcp";
-          version = "2.0.0";
-          src = ./mcp-server;
+        gatewayPackage = pkgs.rustPlatform.buildRustPackage {
+          pname = "securellm-gateway";
+          version = "0.1.0";
+          src = ./.;
 
-          npmDepsHash = "sha256-u0xDEW8vlMcyJtnMEPuVDhJv/piK6lUHKPlkAU5H6+8=";
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+          };
 
           nativeBuildInputs = with pkgs; [
-            nodejs
-            python3
             pkg-config
+            makeWrapper
+            rustToolchain
+            clang
+            libclang.lib
           ];
 
           buildInputs = with pkgs; [
             sqlite
           ];
 
-          buildPhase = ''
-            npm run build
-          '';
+          cargoBuildFlags = [
+            "-p"
+            "securellm-gateway"
+            "--bin"
+            "gateway-mcp"
+          ];
+
+          doCheck = false;
 
           installPhase = ''
-            mkdir -p $out/bin $out/lib/mcp-server
-
-            # Copy build output
-            cp -r build $out/lib/mcp-server/
-            cp package.json $out/lib/mcp-server/
-            cp -r node_modules $out/lib/mcp-server/
-
-            # Create executable wrapper
-            cat > $out/bin/securellm-mcp <<EOF
-            #!${pkgs.bash}/bin/bash
-            exec ${pkgs.nodejs}/bin/node $out/lib/mcp-server/build/src/index.js "\$@"
-            EOF
-            chmod +x $out/bin/securellm-mcp
+            mkdir -p $out/bin
+            cp target/release/gateway-mcp $out/bin/
+            wrapProgram $out/bin/gateway-mcp \
+              --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.git ]}
           '';
 
           meta = with pkgs.lib; {
-            description = "MCP server for SecureLLM Bridge IDE integration";
-            license = licenses.mit;
-            maintainers = [ "marcosfpina" ];
+            description = "SecureLLM Gateway MCP server";
+            homepage = "https://github.com/marcosfpina/securellm-bridge";
+            license = with licenses; [
+              mit
+              asl20
+            ];
+            maintainers = [ "kernelcore" ];
           };
         };
 
@@ -144,14 +147,15 @@
         packages = {
           default = rustPackage;
           rust = rustPackage;
-          mcp = mcpServer;
+          gateway = gatewayPackage;
+          mcp = gatewayPackage;
 
           # Combined package with both Rust and MCP
           all = pkgs.symlinkJoin {
             name = "securellm-bridge-all";
             paths = [
               rustPackage
-              mcpServer
+              gatewayPackage
             ];
           };
         };
@@ -169,7 +173,12 @@
 
           mcp = {
             type = "app";
-            program = "${mcpServer}/bin/securellm-mcp";
+            program = "${gatewayPackage}/bin/gateway-mcp";
+          };
+
+          gateway = {
+            type = "app";
+            program = "${gatewayPackage}/bin/gateway-mcp";
           };
         };
 
@@ -250,11 +259,11 @@
             echo ""
             echo "Commands:"
             echo "  cargo run --bin securellm-api-server  - Start API server"
+            echo "  cargo run -p securellm-gateway --bin gateway-mcp  - Start Gateway MCP"
             echo "  cargo build         - Build Rust workspace"
             echo "  cargo test          - Run Rust tests"
-            echo "  cd mcp-server && npm run build  - Build MCP server"
             echo "  nix build .#rust    - Build Rust package"
-            echo "  nix build .#mcp     - Build MCP server"
+            echo "  nix build .#gateway - Build Gateway MCP server"
             echo "  nix build .#all     - Build both"
           '';
         };
@@ -262,11 +271,12 @@
         # Checks for CI/CD
         checks = {
           rust-build = rustPackage;
-          mcp-build = mcpServer;
+          gateway-build = gatewayPackage;
         };
       }
     ) // {
       # NixOS Module: securellm-bridge sandbox (ADR-0001 Phase 3)
       nixosModules.sandbox = import ./nix/modules/sandbox.nix;
+      nixosModules.gateway-service = import ./nix/modules/gateway-service.nix;
     };
 }

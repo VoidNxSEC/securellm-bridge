@@ -1,154 +1,78 @@
 # 🔧 SecureLLM Bridge — Production TODO List
 
-**Data**: 2026-01-15  
-**Auditoria**: 12 crates analisados — 10 REAL, 1 MISTO (security), 0 puramente stub  
+**Data**: 2026-05-14
+**Auditoria**: 12 crates analisados — 12 REAL, 0 MISTO, 0 stub
+**Sessão**: 5 módulos implementados, 124 testes, 0 warnings
 
 ---
 
-## 📊 Resumo da Auditoria
+## 📊 Resumo da Auditoria (ATUALIZADO)
 
 | Crate | Status | Notas |
 |-------|--------|-------|
 | `core` | ✅ REAL | Traits, tipos, pricing, smart routing, QoS observatory |
-| `security` | ⚠️ MISTO | TLS+Secrets prontos / Sanitizer+Sandbox+Crypto stubs |
+| `security` | ✅ REAL | **TLS, Secrets, Crypto (AES+ChaCha), Sanitizer (17 PII + 6 injection), Sandbox (unshare + cgroups)** |
 | `providers` | ✅ REAL | 8 providers (DeepSeek, OpenAI, Anthropic, Gemini, Groq, LlamaCpp, Nvidia, MlOps) |
 | `api-server` | ✅ REAL | Axum + SSE streaming + health + metrics + graceful shutdown |
 | `gateway` | ✅ REAL | MCP server Git/GitHub com PAT redaction |
 | `agents` | ✅ REAL | Agent executor + parser XML + cache + execução paralela |
 | `task-manager` | ✅ REAL | Tasks + prioridade + SQLite persistence |
-| `context-manager` | ✅ REAL | zstd + sliding window + LRU cache (tokenizer.rs é stub) |
-| `cli` | ✅ REAL | 6 comandos + REPL (só expõe 2 providers) |
+| `context-manager` | ✅ REAL | zstd + sliding window + LRU cache + **tokenizer multi-modelo** |
+| `cli` | ✅ REAL | 6 comandos + REPL + **8 providers expostos** |
 | `tui` | ✅ REAL | Zellij-style com 7 painéis, 4 modos, tema |
 | `agent-tui` | ✅ REAL | Agent overlay para Zellij |
 | `voice-agents` | ✅ REAL | TTS + audio capture + Wyoming protocol |
 
 ---
 
-## 🔴 CRÍTICO — Security Gaps
+## ✅ CONCLUÍDO — Sessão 2026-05-14
 
-### 1. Sanitizer (`crates/security/src/sanitizer.rs`) ✅ CONCLUÍDO
+### 1. Crypto (`crates/security/src/crypto.rs`) ✅
 
-**Status**: ✅ COMPLETO — PII detection, prompt injection, content filtering, 43 testes
+**20 testes** — AES-256-GCM encrypt/decrypt, ChaCha20-Poly1305, key wrapping (Argon2id), password-based encryption, tamper detection.
 
-**O que foi implementado**:
-- [x] **1.1 PII Detection** — 17 padrões de regex com Lazy static:
-  - [x] CPF e CNPJ (formatados e não-formatados)
-  - [x] Email (RFC 5322 simplificado)
-  - [x] Telefone brasileiro e internacional
-  - [x] IPv4 e IPv6 (incluindo abreviação ::)
-  - [x] Cartão de crédito (regex + validação Luhn)
-  - [x] API Keys: OpenAI, Anthropic, Google, AWS, genérica
-  - [x] JWT, chave privada PEM, connection strings
-- [x] **1.2 Prompt Injection Detection** — 6 heurísticas:
-  - [x] "Ignore previous instructions" (Inglês + Português)
-  - [x] "System prompt leakage" (reveal/show/print your system prompt)
-  - [x] Delimiter injection (###, ---, <|im_start|>, [INST], etc.)
-  - [x] Role confusion (system:, assistant:, admin:)
-  - [x] Base64 payloads obfuscados
-  - [x] Jailbreak patterns (DAN mode, developer mode, etc.)
-- [x] **1.3 Content Filtering**:
-  - [x] Blocklist de 5 categorias (bomb/weapon, suicide, child exploitation, malware, doxxing)
-  - [x] Configurável via `SanitizerConfig` (ativa/desativa por categoria)
-- [x] **1.4 SanitizerConfig**:
-  - [x] `redact_pii` — substitui PII por `[REDACTED:TYPE]`
-  - [x] `block_injection` — bloqueia requisição com prompt injection
-  - [x] `block_harmful_content` — bloqueia conteúdo nocivo
-  - [x] `max_message_length` — limite de tamanho por mensagem
-  - [x] `custom_patterns` — regexes definidos pelo usuário
-- [x] **1.5 Testes** — 43 testes: PII detection, redaction, injection, blocking, response sanitization
+### 2. Sanitizer (`crates/security/src/sanitizer.rs`) ✅
 
-**Arquivo**: `crates/security/src/sanitizer.rs`
+**43 testes** — 17 PII patterns (CPF, CNPJ, email, phone, IP, credit card+Luhn, API keys, JWT, PEM, connection strings), 6 prompt injection heuristics (ignore instructions EN+PT, system prompt leak, delimiter, role confusion, base64, jailbreak), 5 content filter categories, `SanitizerReport` + `SanitizerConfig`.
 
----
+### 3. Sandbox (`crates/security/src/sandbox.rs` + `cgroup_helper.rs` + `nix/modules/sandbox.nix`) ✅
 
-### 2. Sandbox ✅ PARCIAL (Phase 1) (`crates/security/src/sandbox.rs`)
+**18 testes** — Process isolation via `unshare` (user/mount/PID/network namespaces), cgroups v2 com graceful degradation, filesystem access control (tmpfs/readonly/full), timeout enforcement, `SandboxResult` com métricas. ADR-0001 documenta o modelo de permissão granular com NEUTRON audit.
 
-**Status**: STUB — `execute()` retorna erro "Sandboxing not yet implemented"
+| Fase | Componente | Status |
+|------|-----------|--------|
+| Phase 1 | Graceful degradation (unshare-only) | ✅ |
+| Phase 2 | `CgroupManager` + UDS + NEUTRON audit | ✅ |
+| Phase 3 | NixOS module (`services.securellm-bridge.sandbox`) | ✅ |
+| Phase 4 | Per-agent profiles (5 agentes) | ✅ |
 
-**O que foi implementado (Phases 1-3 da ADR-0001)**:
-- [x] **2.1 Process Isolation** — `unshare` namespaces (user, mount, PID, network)
-    - [x] Processo filho isolado com `kill_on_drop`
-    - [x] `wait_with_output()` + `tokio::time::timeout`
-- [x] **2.2 Resource Limits** — cgroups v2 com graceful degradation
-    - [x] `memory.max` aplicado via `CgroupManager`
-    - [x] `pids.max` aplicado via `CgroupManager`
-    - [x] Timeout via `tokio::time::timeout`
-- [x] **2.3 Network Restrictions**:
-    - [x] Network namespace isolado com `unshare -n`
-  
-- [x] **2.4 Filesystem Access**:
-    - [x] `None` → tmpfs vazio via `unshare` mount setup
-    - [x] `ReadOnly` → mounts preservados com proc
-    - [x] `Full` → hereda sistema com --mount-proc
-- [x] **2.5 Testes** — 13 testes (execução, timeout, network, cgroups, cleanup)
+### 4. CLI Provider Factory (`crates/cli/src/provider_factory.rs`) ✅
 
-**Arquivos**: `crates/security/src/sandbox.rs`, `crates/security/src/cgroup_helper.rs`, `nix/modules/sandbox.nix`
+**19 testes** — 8 providers expostos no CLI:
+
+| Provider | Tipo | Auth |
+|----------|------|------|
+| `deepseek` | Cloud | `DEEPSEEK_API_KEY` |
+| `openai` | Cloud | `OPENAI_API_KEY` |
+| `anthropic` | Cloud | `ANTHROPIC_API_KEY` |
+| `gemini` | Cloud | `GEMINI_API_KEY` |
+| `groq` | Cloud | `GROQ_API_KEY` |
+| `nvidia` | Cloud | `NVIDIA_API_KEY` |
+| `llamacpp` | Local | — |
+| `mlops` | Local | — |
+
+### 5. Tokenizer (`crates/context-manager/src/tokenizer.rs`) ✅
+
+**24 testes** — Multi-model encoding selection (cl100k, o200k, p50k, r50k, char/4 fallback), token counting, text/message truncation with sentence boundary detection, cost estimation (`CostEstimate`).
 
 ---
 
-### 3. Crypto Encrypt/Decrypt (`crates/security/src/crypto.rs`) ✅ CONCLUÍDO
+## ⬜ PENDENTE
 
-**Status**: ✅ COMPLETO — AES-256-GCM, ChaCha20-Poly1305, key wrapping, 20 testes
-
-**O que foi implementado**:
-- [x] **3.1 AES-256-GCM Encryption**:
-  - [x] `encrypt(key, plaintext) -> ciphertext` com nonce aleatório (12 bytes prepended)
-  - [x] `decrypt(key, ciphertext) -> plaintext` com verificação de tag (tamper detection)
-  - [x] `encrypt_with_random_key()` para keys efêmeras
-- [x] **3.2 ChaCha20-Poly1305**:
-  - [x] `encrypt_chacha()` / `decrypt_chacha()` para CPUs sem AES-NI
-- [x] **3.3 Key Wrapping**:
-  - [x] `derive_key_from_password()` via Argon2id
-  - [x] `encrypt_with_password()` / `decrypt_with_password()` (salt + nonce + tag)
-- [x] **3.4 Testes** — 20 testes: roundtrip, wrong key, tampering, truncation, nonce uniqueness, large payload (1MB), cross-algorithm safety, invalid key length
-
----
-
-## 🟡 MÉDIO — Integration & Completeness Gaps
-
-### 4. CLI Provider Factory (`crates/cli/src/provider_factory.rs`)
-
-**Status**: PARCIAL — só expõe DeepSeek + OpenAI, mas existem 8 providers implementados
-
-**O que foi implementado (Phases 1-3 da ADR-0001)**:
-- [ ] **4.1 Adicionar providers ao `IMPLEMENTED_PROVIDERS`**:
-  - [ ] `anthropic`
-  - [ ] `gemini`
-  - [ ] `groq`
-  - [ ] `llamacpp`
-  - [ ] `nvidia`
-  - [ ] `mlops`
-- [ ] **4.2 Adicionar branches no `build_provider()`** para cada provider
-- [ ] **4.3 Adicionar `default_model()`** para cada provider
-- [ ] **4.4 Testes** — `build_info_provider` para cada provider novo
-
-**Arquivo**: `crates/cli/src/provider_factory.rs`
-
----
-
-### 5. Context Tokenizer (`crates/context-manager/src/tokenizer.rs`)
-
-**Status**: STUB — só tem comentário placeholder
-
-**O que foi implementado (Phases 1-3 da ADR-0001)**:
-- [ ] **5.1 Token counting** usando `tiktoken-rs` (já é dependência):
-  - [ ] Suporte a modelos OpenAI (cl100k_base, p50k, r50k)
-  - [ ] Suporte a modelos DeepSeek
-  - [ ] Fallback: estimativa por char/4
-- [ ] **5.2 Token truncation**:
-  - [ ] Truncar mensagens mantendo as mais recentes
-  - [ ] Preservar system message
-- [ ] **5.3 Testes** — Contagem de tokens vs referência conhecida
-
-**Arquivo**: `crates/context-manager/src/tokenizer.rs`
-
----
-
-### 6. Integration Tests para Providers
+### 6. Integration Tests
 
 **Status**: Não existem testes de integração com APIs reais
 
-**O que foi implementado (Phases 1-3 da ADR-0001)**:
 - [ ] **6.1 Testes com WireMock** (já é dev-dependency):
   - [ ] DeepSeek: mock de chat completion
   - [ ] OpenAI: mock de chat completion
@@ -157,10 +81,6 @@
   - [ ] POST `/v1/chat/completions` → resposta válida
   - [ ] SSE streaming → chunks corretos
   - [ ] Rate limiting → 429 após exceder limite
-
----
-
-## 🟢 BAIXO — Polish & Documentation
 
 ### 7. Observability
 
@@ -190,30 +110,32 @@
 - [ ] **9.3 Security guide** — como configurar TLS, rate limiting
 - [ ] **9.4 Deploy guide** — Docker, NixOS, Kubernetes
 
-| # | Tarefa | Prioridade | Status |
-|---|--------|-----------|--------|
-| 1.1 | PII Detection | ✅ DONE |
-| 1.2 | Prompt Injection Detection | ✅ DONE |
-| 1.3 | Content Filtering | ✅ DONE |
-| 1.4 | Sanitizer Tests (43 tests) | ✅ DONE |
-| 2.1 | Process Isolation (unshare) | ✅ DONE |
-| 2.2 | Resource Limits (cgroups) — graceful degradation | ✅ DONE |
-| 2.3 | Network Restrictions (net namespace) | ✅ DONE |
-| 2.4 | Filesystem Access (tmpfs/readonly) | ✅ DONE |
-| 2.5 | Sandbox Tests (13 tests) | ✅ DONE |
-| 3.1 | AES-256-GCM Encrypt/Decrypt | 🔴 CRÍTICO | ✅ DONE |
-| 3.2 | ChaCha20-Poly1305 | 🔴 CRÍTICO | ✅ DONE |
-| 3.3 | Key Wrapping (Argon2id) | 🔴 CRÍTICO | ✅ DONE |
-| 3.4 | Crypto Tests (20 tests) | 🔴 CRÍTICO | ✅ DONE |
-| 4 | CLI: todos os 8 providers + testes | ✅ DONE |
-| 5 | Tokenizer implementation | 🟡 MÉDIO | ⬜ TODO |
-| 6 | Integration Tests | 🟡 MÉDIO | ⬜ TODO |
-| 7 | Observability (tracing + metrics) | 🟢 BAIXO | ⬜ TODO |
-| 8 | CI/CD Pipeline | 🟢 BAIXO | ⬜ TODO |
-| 9 | Documentação | 🟢 BAIXO | ⬜ TODO |
+---
 
-**Total**: 19 tarefas | **Críticas**: 12 | **Médias**: 3 | **Baixas**: 4
+## 📈 Progresso
+
+| # | Tarefa | Prioridade | Status | Testes |
+|---|--------|-----------|--------|--------|
+| 3.1 | AES-256-GCM Encrypt/Decrypt | 🔴 CRÍTICO | ✅ DONE | 20 |
+| 3.2 | ChaCha20-Poly1305 | 🔴 CRÍTICO | ✅ DONE | — |
+| 3.3 | Key Wrapping (Argon2id) | 🔴 CRÍTICO | ✅ DONE | — |
+| 1.1 | PII Detection (17 patterns) | 🔴 CRÍTICO | ✅ DONE | 43 |
+| 1.2 | Prompt Injection Detection (6 heuristics) | 🔴 CRÍTICO | ✅ DONE | — |
+| 1.3 | Content Filtering (5 categories) | 🔴 CRÍTICO | ✅ DONE | — |
+| 2.1 | Process Isolation (unshare) | 🔴 CRÍTICO | ✅ DONE | 18 |
+| 2.2 | Resource Limits (cgroups) | 🔴 CRÍTICO | ✅ DONE | — |
+| 2.3 | Network Restrictions | 🔴 CRÍTICO | ✅ DONE | — |
+| 2.4 | Filesystem Access | 🔴 CRÍTICO | ✅ DONE | — |
+| 2.5 | NixOS Module + ADR-0001 | 🔴 CRÍTICO | ✅ DONE | — |
+| 4 | CLI: 8 providers | 🟡 MÉDIO | ✅ DONE | 19 |
+| 5 | Tokenizer (multi-model) | 🟡 MÉDIO | ✅ DONE | 24 |
+| 6 | Integration Tests | 🟡 MÉDIO | ⬜ TODO | — |
+| 7 | Observability | 🟢 BAIXO | ⬜ TODO | — |
+| 8 | CI/CD Pipeline | 🟢 BAIXO | ⬜ TODO | — |
+| 9 | Documentação | 🟢 BAIXO | ⬜ TODO | — |
+
+**Total**: 16 tarefas | **Concluídas**: 13 | **Pendentes**: 3 | **Testes**: 124
 
 ---
 
-*Última atualização: 2026-01-15 — Auditoria de código*
+*Última atualização: 2026-05-14 — Sessão de implementação*
