@@ -1,7 +1,10 @@
 pub mod audit;
+pub mod auth;
 pub mod config;
 pub mod errors;
 pub mod git_ops;
+pub mod oauth;
+pub mod rate_limit;
 pub mod server;
 pub mod tools;
 pub mod tracing_redact;

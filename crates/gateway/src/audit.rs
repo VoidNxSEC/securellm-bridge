@@ -69,6 +69,12 @@ impl AuditEvent {
         self
     }
 
+    pub fn rate_limited(mut self, error: impl Into<String>) -> Self {
+        self.outcome = "rate_limited".into();
+        self.error = Some(error.into());
+        self
+    }
+
     pub fn with_patch_sha256(mut self, sha: impl Into<String>) -> Self {
         self.patch_sha256 = Some(sha.into());
         self

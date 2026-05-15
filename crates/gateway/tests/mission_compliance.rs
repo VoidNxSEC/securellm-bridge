@@ -29,6 +29,8 @@ fn test_config(allowlist: Vec<&str>, log_dir: std::path::PathBuf) -> GatewayConf
         log_dir,
         transport: GatewayTransport::Stdio,
         listen_addr: "127.0.0.1:8765".parse().unwrap(),
+        bearer_token: None,
+        rate_limit_per_minute: std::num::NonZeroU32::new(10).unwrap(),
     }
 }
 

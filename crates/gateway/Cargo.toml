@@ -30,6 +30,9 @@ schemars = "1.2"
 # Secrets / redaction
 secrecy = { workspace = true }
 
+# Rate limiting
+governor = { workspace = true }
+
 # Logging
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

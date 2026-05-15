@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use securellm_gateway::{
     audit::{AuditEvent, JsonlSink},
+    rate_limit::RateLimitState,
     transport as gateway_transport, GatewayConfig, GatewayContext, GatewayHandler,
     GatewayTransport,
 };
@@ -22,6 +23,8 @@ async fn main() -> Result<()> {
     info!(?config, "gateway config loaded");
     let transport = config.transport;
     let listen_addr = config.listen_addr;
+    let bearer_token = config.bearer_token.clone();
+    let rate_limit = config.rate_limit_per_minute;
 
     let audit = JsonlSink::open(&config.log_dir)
         .await
@@ -39,11 +42,14 @@ async fn main() -> Result<()> {
         .context("emitting boot audit event")?;
     info!(path = ?audit.path(), "audit sink ready");
 
+    let http_rate_limit = RateLimitState::new(config.agent_id.clone(), audit.clone(), rate_limit);
     let ctx = GatewayContext::new(Arc::new(config), audit);
     let handler = GatewayHandler::new(ctx);
 
     match transport {
         GatewayTransport::Stdio => gateway_transport::serve_stdio(handler).await,
-        GatewayTransport::Http => gateway_transport::serve_http(handler, listen_addr).await,
+        GatewayTransport::Http => {
+            gateway_transport::serve_http(handler, listen_addr, bearer_token, http_rate_limit).await
+        }
     }
 }

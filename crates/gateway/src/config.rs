@@ -1,6 +1,7 @@
 use crate::errors::{GatewayError, Result};
 use secrecy::SecretString;
 use std::net::SocketAddr;
+use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -38,6 +39,9 @@ pub struct GatewayConfig {
     pub log_dir: PathBuf,
     pub transport: GatewayTransport,
     pub listen_addr: SocketAddr,
+    /// Optional static bearer fallback for HTTP clients. OAuth-issued tokens are always accepted.
+    pub bearer_token: Option<SecretString>,
+    pub rate_limit_per_minute: NonZeroU32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -78,6 +82,11 @@ impl std::fmt::Debug for GatewayConfig {
             .field("log_dir", &self.log_dir)
             .field("transport", &self.transport)
             .field("listen_addr", &self.listen_addr)
+            .field(
+                "bearer_token",
+                &self.bearer_token.as_ref().map(|_| "<redacted>"),
+            )
+            .field("rate_limit_per_minute", &self.rate_limit_per_minute)
             .finish()
     }
 }
@@ -137,6 +146,24 @@ impl GatewayConfig {
             Err(_) => default_listen_addr(),
         };
 
+        let bearer_token = match std::env::var("GATEWAY_BEARER_TOKEN") {
+            Ok(s) if !s.trim().is_empty() => Some(SecretString::new(s)),
+            Ok(_) => None,
+            Err(_) => None,
+        };
+
+        if transport == GatewayTransport::Http && bearer_token.is_none() {
+            tracing::warn!(
+                "GATEWAY_BEARER_TOKEN not set; static bearer fallback is disabled. \
+                 HTTP clients must use the OAuth authorization flow."
+            );
+        }
+
+        let rate_limit_per_minute = match std::env::var("GATEWAY_RATE_LIMIT_PER_MINUTE") {
+            Ok(s) => parse_rate_limit_per_minute(&s)?,
+            Err(_) => default_rate_limit_per_minute(),
+        };
+
         Ok(Self {
             pat,
             allowlist,
@@ -144,6 +171,8 @@ impl GatewayConfig {
             log_dir,
             transport,
             listen_addr,
+            bearer_token,
+            rate_limit_per_minute,
         })
     }
 
@@ -163,6 +192,23 @@ fn parse_listen_addr(raw: &str) -> Result<SocketAddr> {
         GatewayError::Config(format!(
             "invalid GATEWAY_LISTEN_ADDR '{raw}', expected host:port: {e}"
         ))
+    })
+}
+
+fn default_rate_limit_per_minute() -> NonZeroU32 {
+    NonZeroU32::new(10).expect("hard-coded gateway rate limit is non-zero")
+}
+
+fn parse_rate_limit_per_minute(raw: &str) -> Result<NonZeroU32> {
+    let parsed = raw.trim().parse::<u32>().map_err(|e| {
+        GatewayError::Config(format!(
+            "invalid GATEWAY_RATE_LIMIT_PER_MINUTE '{raw}', expected positive integer: {e}"
+        ))
+    })?;
+    NonZeroU32::new(parsed).ok_or_else(|| {
+        GatewayError::Config(
+            "invalid GATEWAY_RATE_LIMIT_PER_MINUTE '0', expected positive integer".into(),
+        )
     })
 }
 
@@ -199,5 +245,13 @@ mod tests {
     fn listen_addr_parser_rejects_missing_port() {
         let err = parse_listen_addr("127.0.0.1").expect_err("must require port");
         assert!(err.to_string().contains("invalid GATEWAY_LISTEN_ADDR"));
+    }
+
+    #[test]
+    fn rate_limit_parser_rejects_zero() {
+        let err = parse_rate_limit_per_minute("0").expect_err("must require positive value");
+        assert!(err
+            .to_string()
+            .contains("invalid GATEWAY_RATE_LIMIT_PER_MINUTE"));
     }
 }

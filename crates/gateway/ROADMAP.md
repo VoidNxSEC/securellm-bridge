@@ -51,27 +51,30 @@
 
 ## Próximas ondas
 
-### Onda 4 — Transport HTTP + auth (em andamento)
+### Onda 4 — Transport HTTP + auth ✅
 
 **Meta:** desbloquear o cenário-alvo da MISSION — agente Claude Code em sandbox remoto da web consegue conectar. Hoje o transport é stdio, exige spawn local.
 
 **Progresso em 2026-05-14:** 4.1–4.3 implementados e validados. `rmcp 1.7.0` foi vendorizado em `vendor/rmcp-1.7.0` porque a feature `server-side-http` declarava `rand = 0.10`, que quebrava resolução com `chacha20 ^0.10.0`; o código do `rmcp` não usa `rand` nessa surface, então o patch local remove só essa dependência fantasma. Validação: `nix develop --command cargo test -p securellm-gateway` verde, incluindo `/mcp` HTTP initialize.
+
+**Progresso em 2026-05-15:** 4.4–4.7 implementados e validados com `cargo test -p securellm-gateway`. A decisão operacional mudou de mTLS-first para OAuth/PKCE + bearer token estático opcional: combina melhor com clientes MCP remotos/web, mantém `PAT` server-side e deixa mTLS como hardening posterior quando houver controle de certificado no cliente.
 
 | # | Step | Arquivos | Estimativa |
 |---|---|---|---|
 | 4.1 | ✅ Adicionar feature `transport-streamable-http-server` ao rmcp em workspace deps. Verificar API atual do rmcp pra confirmar shape. | `Cargo.toml` (workspace), `crates/gateway/Cargo.toml`, `vendor/rmcp-1.7.0` | feito |
 | 4.2 | ✅ Modo de transport configurável: env `GATEWAY_TRANSPORT={stdio,http}`, default `stdio`. Bin escolhe runtime. | `crates/gateway/src/bin/gateway-mcp.rs`, `crates/gateway/src/config.rs`, `crates/gateway/src/transport.rs` | feito |
 | 4.3 | ✅ HTTP server escutando em `GATEWAY_LISTEN_ADDR` (default `127.0.0.1:8765`). Endpoint MCP por path padronizado do rmcp. | `crates/gateway/src/transport.rs`, `crates/gateway/tests/http_transport.rs` | feito |
-| 4.4 | Auth na frente. Decisão: **mTLS** (bridge já tem `rustls`+`rustls-pemfile` no workspace). Cert do cliente identifica o agente — substitui `GATEWAY_AGENT_ID` env (que vira fallback dev). | `crates/gateway/src/auth.rs`, config | próxima |
-| 4.5 | Rate limit por agent_id. `governor` já é workspace dep. Default: 10 calls/min por agente. Excedeu → 429 + audit `rate_limited`. | `crates/gateway/src/rate_limit.rs` | 1h |
-| 4.6 | Teste de integração: bridge sobe servidor HTTP, cliente teste se conecta com cert válido, faz `tools/list`, e cert inválido recusa. Tooling: `reqwest` + cert auto-gerado em tempdir. | `crates/gateway/tests/http_auth.rs` | 2h |
-| 4.7 | Doc operacional: `crates/gateway/DEPLOY.md` com snippet de geração de cert do agente e config do client MCP. | `crates/gateway/DEPLOY.md` | 30min |
+| 4.4 | ✅ Auth na frente: `/mcp` aceita `Authorization: Bearer` com `GATEWAY_BEARER_TOKEN` ou token OAuth/PKCE emitido pelo gateway; sem token ou token inválido → 401 com `WWW-Authenticate` apontando metadata OAuth. | `crates/gateway/src/auth.rs`, `crates/gateway/src/oauth.rs`, `crates/gateway/src/transport.rs`, config | feito |
+| 4.5 | ✅ Rate limit por `agent_id` com `governor`. Default: 10 calls/min por agente via `GATEWAY_RATE_LIMIT_PER_MINUTE`. Excedeu → 429 + audit `rate_limited`. | `crates/gateway/src/rate_limit.rs`, `crates/gateway/tests/http_transport.rs` | feito |
+| 4.6 | ✅ Teste OAuth/PKCE end-to-end: authorization page → authorization code → token → `tools/list`; mantém asserts de 401 e 429. | `crates/gateway/tests/http_transport.rs` | feito |
+| 4.7 | ✅ Doc operacional com env vars HTTP, fluxo OAuth/PKCE, bearer fallback, rate limit e exemplo de client MCP. | `crates/gateway/DEPLOY.md` | feito |
 
-**DoD:** sandbox-side fake (curl ou httpie com cert) consegue chamar `tools/list`. Sem cert → recusa. Cert revogado → recusa. Audit JSONL reflete identidade do cert.
+**DoD:** ✅ sandbox-side fake consegue chamar `tools/list` com bearer ou token OAuth. Sem token → 401. Token inválido → 401. Excesso de chamadas → 429 + audit `rate_limited`. Audit JSONL continua sem PAT/bearer token.
 
 **Riscos:**
 - rmcp `transport-streamable-http-server` é mais novo que `transport-io`. PF-A: confirmar maturidade antes do trabalho, igual fizemos com rmcp em geral.
-- mTLS tem ergonomia ruim pra agentes "na web" que talvez não controlem cert. Fallback: bearer token assinado, mas perde rotação granular.
+- OAuth/PKCE usa store em memória hoje; restart invalida tokens emitidos. Persistência/rotação fica para Onda 5+ se virar necessidade operacional.
+- mTLS continua opção de hardening para ambientes onde o cliente remoto controla certificado, mas não é mais o caminho primário para agente "na web".
 
 **Estimativa total:** ~8h.
 
@@ -139,10 +142,11 @@ Itens que não justificam onda própria:
 | **D2** | `git` CLI via `tokio::process::Command` em vez de `git2`/libgit2 | libgit2 não implementa `git am` — usaríamos `git apply` e perderíamos autor/data/mensagem dos commits. Sandbox já tem git binário. Injeção de PAT trivial via URL |
 | **D3** | Opção B (patch-based, stateless) em vez de Opção A (clone server-side) | Stateless, paraleliza por agente, patch faz parte natural do audit (`patch_sha256`), agente controla conteúdo dos commits |
 | **D4** | base64 do mbox raw como encoding do patch | Evita inferno de escape JSON com `\n`/`"`/`\r`; sobrevive ao transport sem mudança; overhead +33% aceitável |
-| **D5** | `agent_id` via env var `GATEWAY_AGENT_ID` (autoritativo) | MCP spec não passa identidade em tool calls. Cross-check opcional contra `_meta.agentId` se rmcp expuser. Em modo HTTP+mTLS, CN do cert substitui a env |
+| **D5** | `agent_id` via env var `GATEWAY_AGENT_ID` (autoritativo) | MCP spec não passa identidade em tool calls. Cross-check opcional contra `_meta.agentId` se rmcp expuser. Futuro mTLS ou OAuth subject verificado pode substituir a env |
 | **D6** | Audit JSONL próprio em vez de reusar `crates/core/src/audit.rs::AuditEvent` | Domínios diferentes: core é LLM-token-cost (`prompt_tokens`, `cost_usd`), gateway é ação-justificativa (`rationale`, `github_response`) |
 | **D7** | Casa: crate novo no `securellm-bridge`, não no `securellm-mcp` | Diversificação + valorização do bridge que tinha infra robusta mas sem feature anchor de propósito próprio. Bridge já se autoanunciava MCP Server na doc |
 | **D8** | `schemars` 1.2 (não 0.8) | rmcp 1.7 puxa schemars 1.2.1; mismatch de versão quebra `JsonSchema` em `Parameters<T>` |
+| **D9** | HTTP auth primário via OAuth/PKCE + bearer fallback, não mTLS-first | Agentes MCP remotos/web normalmente controlam headers e OAuth melhor que certificados cliente. mTLS permanece hardening posterior para deploys controlados |
 
 ---
 
