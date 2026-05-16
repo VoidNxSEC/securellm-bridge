@@ -215,6 +215,8 @@
             git
             ripgrep
             fd
+            sops
+            age
           ];
 
           shellHook = ''
