@@ -129,7 +129,7 @@
 | 2.5 | NixOS Module + ADR-0001 | 🔴 CRÍTICO | ✅ DONE | — |
 | 4 | CLI: 8 providers | 🟡 MÉDIO | ✅ DONE | 19 |
 | 5 | Tokenizer (multi-model) | 🟡 MÉDIO | ✅ DONE | 24 |
-| 6 | Integration Tests | 🟡 MÉDIO | ⬜ TODO | — |
+| 6 | Integration Tests (26 tests) | ✅ DONE | 26 |
 | 7 | Observability | 🟢 BAIXO | ⬜ TODO | — |
 | 8 | CI/CD Pipeline | 🟢 BAIXO | ⬜ TODO | — |
 | 9 | Documentação | 🟢 BAIXO | ⬜ TODO | — |
