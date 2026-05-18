@@ -1,4 +1,4 @@
-# SecureLLM Bridge - AI Assistant Guide
+# SecureLLM Bridge - The Universal LLM Gateway for voidnxlabs applications
 
 **Project**: SecureLLM Bridge  
 **Version**: 0.1.0  
@@ -11,7 +11,7 @@
 
 ### Project Overview
 
-**SecureLLM Bridge** is a secure, production-ready proxy for Large Language Model APIs with enterprise-grade security features. Built in Rust, it provides:
+**SecureLLM Bridge** is a secure, production-ready proxy for Large Language Model APIs . Built in Rust, it provides:
 
 - **Unified API Interface**: Single consistent interface for multiple LLM providers
 - **Enterprise Security**: TLS mutual authentication, rate limiting, audit logging, sandboxing
@@ -56,6 +56,7 @@ SecureLLM Bridge/
 ### Crate Responsibilities
 
 #### 1. `crates/core/` - Foundation
+
 - **Purpose**: Core abstractions and unified interface
 - **Key Components**:
   - `LLMProvider` trait: Unified interface for all providers
@@ -65,6 +66,7 @@ SecureLLM Bridge/
 - **Dependencies**: Minimal (serde, anyhow, tokio)
 
 #### 2. `crates/security/` - Security Layer
+
 - **Purpose**: Enterprise-grade security features
 - **Key Components**:
   - **TLS**: Mutual authentication with `rustls`, client certificates
@@ -76,6 +78,7 @@ SecureLLM Bridge/
 - **Dependencies**: rustls, tokio, secrecy, serde_json
 
 #### 3. `crates/providers/` - LLM Integrations
+
 - **Purpose**: Provider-specific implementations
 - **Supported Providers**:
   - **DeepSeek**: ✅ Tested and working (api.deepseek.com)
@@ -83,7 +86,7 @@ SecureLLM Bridge/
   - **Anthropic**: ✅ Implementation complete (Claude models)
   - **Ollama**: ✅ Local inference support (localhost:11434)
   - **ML-Offload-API**: 🚧 Planned integration (port 9000)
-- **Features**: 
+- **Features**:
   - Automatic retry with exponential backoff
   - Request/response transformation
   - Provider-specific error handling
@@ -91,6 +94,7 @@ SecureLLM Bridge/
 - **Dependencies**: reqwest, serde_json, tokio
 
 #### 4. `crates/cli/` - Command-Line Interface
+
 - **Purpose**: CLI for testing and automation
 - **Commands**:
   - `securellm test <provider>` - Test provider connectivity
@@ -101,6 +105,7 @@ SecureLLM Bridge/
 - **Dependencies**: clap, tokio, serde
 
 #### 5. `crates/desktop/` - GUI Application
+
 - **Purpose**: User-friendly desktop interface
 - **Status**: 🚧 Work in progress
 - **Planned Features**:
@@ -155,11 +160,13 @@ SecureLLM Bridge/
 ### TLS Configuration
 
 **Certificates**:
+
 - Server certificate: `/etc/securellm/certs/server.crt`
 - Server key: `/etc/securellm/certs/server.key`
 - Client CA: `/etc/securellm/certs/client-ca.crt`
 
 **Configuration** (`config.toml`):
+
 ```toml
 [security.tls]
 enabled = true
@@ -173,6 +180,7 @@ require_client_cert = true
 
 **Algorithm**: Token bucket with refill  
 **Configuration**:
+
 ```toml
 [security.rate_limit]
 enabled = true
@@ -182,6 +190,7 @@ per_provider = true
 ```
 
 **Limits by Provider**:
+
 - DeepSeek: 60 req/min, 10 burst
 - OpenAI: 3500 req/min (API tier dependent)
 - Anthropic: 50 req/min, 5 burst
@@ -195,6 +204,7 @@ per_provider = true
 **Storage**: `/var/log/securellm/audit.log`
 
 **Example Log Entry**:
+
 ```json
 {
   "timestamp": "2025-11-06T01:54:32Z",
@@ -217,6 +227,7 @@ per_provider = true
 ### Adding a New Provider
 
 1. **Create Provider Module** (`crates/providers/src/newprovider.rs`):
+
 ```rust
 use crate::core::{LLMProvider, ChatRequest, ChatResponse, ProviderError};
 
@@ -233,13 +244,15 @@ impl LLMProvider for NewProvider {
 }
 ```
 
-2. **Add to Provider Registry** (`crates/providers/src/lib.rs`):
+1. **Add to Provider Registry** (`crates/providers/src/lib.rs`):
+
 ```rust
 pub mod newprovider;
 pub use newprovider::NewProvider;
 ```
 
-3. **Add Configuration** (`config.toml`):
+1. **Add Configuration** (`config.toml`):
+
 ```toml
 [providers.newprovider]
 enabled = true
@@ -247,7 +260,8 @@ api_key = "${NEW_PROVIDER_API_KEY}"
 base_url = "https://api.newprovider.com"
 ```
 
-4. **Implement Tests**:
+1. **Implement Tests**:
+
 ```rust
 #[tokio::test]
 async fn test_newprovider() {
@@ -260,6 +274,7 @@ async fn test_newprovider() {
 ### Provider Testing
 
 **Test Script**: `basic_usage.sh`
+
 ```bash
 #!/bin/bash
 export DEEPSEEK_API_KEY="your-key"
@@ -267,6 +282,7 @@ cargo run --bin securellm -- test deepseek
 ```
 
 **Expected Output**:
+
 ```
 Testing DeepSeek provider...
 Request sent in 738ms
@@ -311,18 +327,21 @@ Status: ✅ Success
 ### Integration Steps (Phase 1)
 
 **Week 1: Research & Design**
+
 - [x] Analyze ml-offload-api endpoints
 - [ ] Design LocalProvider implementation
 - [ ] Define fallback strategy (cloud → local)
 - [ ] Plan VRAM-aware routing
 
 **Week 2: Implementation**
+
 - [ ] Create `crates/providers/src/local.rs`
 - [ ] Implement OpenAI-compatible client
 - [ ] Add VRAM monitoring integration
 - [ ] Implement model availability checks
 
 **Week 3: Testing & Integration**
+
 - [ ] Unit tests for LocalProvider
 - [ ] Integration tests with ml-offload-api
 - [ ] Load testing and performance tuning
@@ -417,12 +436,14 @@ cargo test
 ### Testing Providers
 
 **DeepSeek**:
+
 ```bash
 export DEEPSEEK_API_KEY="your-key-here"
 ./basic_usage.sh
 ```
 
 **Ollama** (requires local Ollama server):
+
 ```bash
 ollama serve  # Start Ollama server
 cargo run --bin securellm -- test ollama
@@ -431,6 +452,7 @@ cargo run --bin securellm -- test ollama
 ### Configuration Management
 
 **Development** (`config.toml`):
+
 ```toml
 [providers.deepseek]
 enabled = true
@@ -447,6 +469,7 @@ requests_per_minute = 60
 ```
 
 **Production** (`config.production.toml`):
+
 ```toml
 [security.tls]
 enabled = true
@@ -501,7 +524,7 @@ docker run -d \
 
 1. **Formatting**: Use `rustfmt` with default settings
 2. **Linting**: Address all `clippy` warnings
-3. **Naming**: 
+3. **Naming**:
    - Types: `PascalCase`
    - Functions/methods: `snake_case`
    - Constants: `SCREAMING_SNAKE_CASE`
@@ -519,6 +542,7 @@ docker run -d \
 ### Testing Strategy
 
 **Unit Tests**: Test individual components in isolation
+
 ```rust
 #[cfg(test)]
 mod tests {
@@ -533,6 +557,7 @@ mod tests {
 ```
 
 **Integration Tests**: Test provider integrations
+
 ```rust
 #[tokio::test]
 async fn test_deepseek_integration() {
@@ -543,6 +568,7 @@ async fn test_deepseek_integration() {
 ```
 
 **Security Tests**: Validate security features
+
 ```rust
 #[tokio::test]
 async fn test_rate_limit_enforcement() {
@@ -552,7 +578,7 @@ async fn test_rate_limit_enforcement() {
 
 ### Git Workflow
 
-1. **Branches**: 
+1. **Branches**:
    - `main`: Stable, production-ready
    - `develop`: Integration branch
    - `feature/*`: New features
@@ -593,6 +619,7 @@ The MCP (Model Context Protocol) server provides IDE integration for SecureLLM B
 ### Configuration
 
 Add to Claude Desktop config (`~/.config/Claude/claude_desktop_config.json`):
+
 ```json
 {
   "mcpServers": {
@@ -641,12 +668,14 @@ await use_mcp_tool({
 
 **Error**: `error: linking with cc failed`
 **Solution**: Ensure all system dependencies are installed
+
 ```bash
 nix develop  # Nix will provide all dependencies
 ```
 
 **Error**: `cannot find crate secrecy`
 **Solution**: Clean and rebuild
+
 ```bash
 cargo clean
 cargo build
@@ -656,6 +685,7 @@ cargo build
 
 **Error**: `DeepSeek API authentication failed`
 **Solution**: Check API key is set correctly
+
 ```bash
 echo $DEEPSEEK_API_KEY  # Verify key is set
 export DEEPSEEK_API_KEY="sk-your-key-here"
@@ -663,6 +693,7 @@ export DEEPSEEK_API_KEY="sk-your-key-here"
 
 **Error**: `Rate limit exceeded`
 **Solution**: Wait for rate limit reset or adjust configuration
+
 ```toml
 [security.rate_limit]
 requests_per_minute = 30  # Reduce rate
@@ -672,6 +703,7 @@ requests_per_minute = 30  # Reduce rate
 
 **Error**: `TLS handshake failed`
 **Solution**: Verify certificate paths and validity
+
 ```bash
 openssl x509 -in /etc/securellm/certs/server.crt -text -noout
 ```
@@ -679,7 +711,8 @@ openssl x509 -in /etc/securellm/certs/server.crt -text -noout
 ### Runtime Issues
 
 **Error**: `VRAM insufficient for inference`
-**Solution**: 
+**Solution**:
+
 1. Check VRAM availability: `nvidia-smi`
 2. Reduce model size or batch size
 3. Use cloud provider fallback
@@ -689,6 +722,7 @@ openssl x509 -in /etc/securellm/certs/server.crt -text -noout
 ## Roadmap
 
 ### Phase 1: Foundation (Complete ✅)
+
 - [x] Core architecture and traits
 - [x] Security module (TLS, rate limiting, audit)
 - [x] DeepSeek provider integration
@@ -699,6 +733,7 @@ openssl x509 -in /etc/securellm/certs/server.crt -text -noout
 - [x] Docker support
 
 ### Phase 2: ML-Offload Integration (In Progress 🚧)
+
 - [ ] LocalProvider implementation
 - [ ] VRAM-aware routing
 - [ ] Model availability checks
@@ -707,6 +742,7 @@ openssl x509 -in /etc/securellm/certs/server.crt -text -noout
 - [ ] Integration tests
 
 ### Phase 3: Advanced Features (Planned 📋)
+
 - [ ] Desktop GUI application
 - [ ] Multi-tenant support
 - [ ] Advanced observability (Prometheus, Grafana)
@@ -715,6 +751,7 @@ openssl x509 -in /etc/securellm/certs/server.crt -text -noout
 - [ ] Response streaming
 
 ### Phase 4: Enterprise Features (Future 🔮)
+
 - [ ] Kubernetes operator
 - [ ] Multi-region deployment
 - [ ] Advanced RBAC
@@ -754,16 +791,19 @@ openssl x509 -in /etc/securellm/certs/server.crt -text -noout
 ## Support & Resources
 
 ### Documentation
+
 - This file: `CLAUDE.md`
 - API docs: `cargo doc --open`
 - Examples: `examples/` directory
 
 ### Community
+
 - Issues: File via `/reportbug` in Cline
 - Discussions: Project discussions
 - Maintainer: kernelcore
 
 ### Related Projects
+
 - **ml-offload-api**: `/etc/nixos/modules/ml/offload/`
 - **NixOS Configuration**: `/etc/nixos/`
 
@@ -789,12 +829,14 @@ See `config.toml` for complete configuration options.
 ### Performance Metrics
 
 **Typical Response Times**:
+
 - DeepSeek: 500-1000ms
 - OpenAI GPT-4: 1000-3000ms
 - Anthropic Claude: 800-2000ms
 - Ollama (local): 200-500ms
 
 **Resource Usage**:
+
 - Memory: ~50MB base + ~200MB per active connection
 - CPU: Minimal (<1% idle, 5-10% under load)
 - Network: Depends on model and usage

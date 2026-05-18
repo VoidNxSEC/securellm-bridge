@@ -24,3 +24,8 @@ mcp-server/node_modules/
 *.db-shm
 *.db-wal
 .direnv/
+
+# Runtime artifacts
+logs/
+data/
+ssh_sessions.db
