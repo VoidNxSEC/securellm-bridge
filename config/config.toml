@@ -22,9 +22,9 @@ logging_enabled = true
 # export SECURELLM_DEEPSEEK_API_KEY="your-key-here"
 
 [[providers]]
-name = "ollama"
+name = "llama.cpp"
 enabled = true
-endpoint = "http://localhost:11434"
+endpoint = "http://localhost:8081"
 timeout_seconds = 120
 
 [rate_limiting]
@@ -38,7 +38,7 @@ limit = 100
 burst_size = 20
 
 [audit]
-enabled = true
+enabled = false
 log_requests = true
 log_responses = false  # Set true only if needed, as it can contain sensitive data
 retention_days = 90
