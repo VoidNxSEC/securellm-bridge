@@ -3892,6 +3892,7 @@ dependencies = [
  "bytes",
  "chrono",
  "dashmap 6.1.0",
+ "futures-core",
  "governor",
  "reqwest",
  "serde",
@@ -3936,8 +3937,10 @@ name = "securellm-providers"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-stream",
  "async-trait",
  "chrono",
+ "futures-util",
  "reqwest",
  "secrecy 0.10.3",
  "securellm-core",

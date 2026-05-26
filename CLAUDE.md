@@ -748,7 +748,9 @@ openssl x509 -in /etc/securellm/certs/server.crt -text -noout
 - [ ] Advanced observability (Prometheus, Grafana)
 - [ ] Cost optimization engine
 - [ ] Prompt caching
-- [ ] Response streaming
+- [x] Response streaming for `/v1/chat/completions` via OpenAI-compatible SSE (`openai`, `deepseek`, `groq`, `ml-ops`)
+- [ ] Native Anthropic streaming
+- [ ] Legacy `/v1/completions` streaming
 
 ### Phase 4: Enterprise Features (Future 🔮)
 

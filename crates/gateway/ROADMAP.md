@@ -2,6 +2,8 @@
 
 > 3 tools MCP (`gateway_push_branch`, `gateway_create_pr`, `gateway_comment_pr`) que permitem agentes Claude Code em sandbox remoto fazer push/PR/comment no GitHub sem ver credenciais. Hospedado no `securellm-bridge` como primeira feature MCP concreta — o bridge se autoanunciava "MCP Server" desde sempre, agora finalmente é.
 
+> Nota de escopo: este roadmap cobre o `crates/gateway` MCP. O SSE OpenAI-compatible de `/v1/chat/completions` vive no `crates/api-server`; o progresso dessa trilha está documentado em `crates/api-server/README.md` e no roadmap geral do `CLAUDE.md`.
+
 **Fontes:**
 - MISSION: `/home/kernelcore/master/securellm-mcp/MISSION.md`
 - Plano da execução inicial: `/home/kernelcore/.claude/plans/ok-ent-o-vamos-fazer-tranquil-castle.md`

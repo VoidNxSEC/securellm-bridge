@@ -87,7 +87,7 @@ Enter a hermetic development shell with all dependencies (Rust, Cargo, OpenSSL, 
 
 ```bash
 nix develop
-cargo run --bin securellm
+nix develop --command cargo run --bin securellm-api-server
 ```
 
 ## 🛡️ Security Posture
