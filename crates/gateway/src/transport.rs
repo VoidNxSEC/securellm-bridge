@@ -1,4 +1,4 @@
-use crate::{auth, oauth, oauth::OAuthStore, rate_limit, GatewayHandler};
+use crate::{auth, oauth, oauth::OAuthStore, rate_limit, routes, softwares::SoftwareRegistry, GatewayHandler};
 use anyhow::{Context, Result};
 use axum::{middleware, routing::get};
 use rmcp::{
@@ -59,7 +59,13 @@ pub fn http_router(
         .route("/token", axum::routing::post(oauth::token))
         .with_state(oauth_store);
 
-    axum::Router::new().merge(mcp).merge(oauth)
+    // Public software registry — no authentication required.
+    let registry = SoftwareRegistry::new();
+    let software = routes::software_routes().with_state(routes::AppState {
+        registry,
+    });
+
+    axum::Router::new().merge(mcp).merge(oauth).merge(software)
 }
 
 pub async fn serve_stdio(handler: GatewayHandler) -> Result<()> {
