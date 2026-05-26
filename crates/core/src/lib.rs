@@ -10,8 +10,10 @@ pub mod request;
 pub mod response; // New module
 
 use async_trait::async_trait;
+use futures_core::Stream;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::pin::Pin;
 
 pub use error::{Error, Result};
 pub use request::Request;
@@ -19,6 +21,8 @@ pub use response::{
     Choice, FinishReason, LogProbs, RateLimitInfo, Response, ResponseMetadata, StreamChunk,
     StreamDelta, TokenUsage,
 };
+
+pub type ProviderStream = Pin<Box<dyn Stream<Item = Result<StreamChunk>> + Send>>;
 
 /// Core trait for LLM providers
 ///
@@ -40,6 +44,17 @@ pub trait LLMProvider: Send + Sync {
     /// This method handles all provider-specific logic while maintaining
     /// security guarantees from the security layer.
     async fn send_request(&self, request: Request) -> Result<Response>;
+
+    /// Stream a request from the LLM provider.
+    ///
+    /// Providers that do not override this method fail explicitly instead of
+    /// silently falling back to a mock or buffered response.
+    async fn stream_request(&self, _request: Request) -> Result<ProviderStream> {
+        Err(Error::Provider {
+            provider: self.name().to_string(),
+            message: "streaming is not implemented for this provider".to_string(),
+        })
+    }
 
     /// Check if the provider is available/healthy
     async fn health_check(&self) -> Result<ProviderHealth>;

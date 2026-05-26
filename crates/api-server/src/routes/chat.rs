@@ -312,7 +312,7 @@ fn parse_model_identifier(model: &str) -> ApiResult<(String, String)> {
 use securellm_core::{
     intelligence::RoutingStrategy, request::RequestParameters, Message as CoreMessage,
     MessageContent as CoreMessageContent, MessageRole as CoreMessageRole, Request as CoreRequest,
-    Response as CoreResponse,
+    Response as CoreResponse, StreamChunk as CoreStreamChunk,
 };
 
 // ... (existing helper functions) ...
@@ -445,84 +445,135 @@ fn convert_response(resp: CoreResponse) -> ChatCompletionResponse {
 
 /// Create streaming completion
 async fn create_completion_stream(
-    _state: Arc<AppState>,
+    state: Arc<AppState>,
     req: ChatCompletionRequest,
-    _provider_name: String,
-    _model_name: String,
-    _request_id: Uuid,
+    provider_name: String,
+    model_name: String,
+    request_id: Uuid,
 ) -> ApiResult<impl Stream<Item = Result<Event, Infallible>>> {
-    // TODO: Implement actual provider streaming
-    // For now, return a mock stream
+    let candidates = if provider_name != "auto" {
+        vec![(provider_name.clone(), model_name.clone())]
+    } else {
+        vec![
+            ("llamacpp".to_string(), "local-model".to_string()),
+            ("deepseek".to_string(), "deepseek-chat".to_string()),
+            ("groq".to_string(), "llama-3.3-70b-versatile".to_string()),
+            ("openai".to_string(), "gpt-4-turbo".to_string()),
+            (
+                "anthropic".to_string(),
+                "claude-3-sonnet-20240229".to_string(),
+            ),
+        ]
+    };
 
-    warn!("Using mock stream - provider implementation pending");
+    let ranked_candidates = state
+        .routing_engine
+        .select_candidates(candidates, RoutingStrategy::LowestCost);
 
-    let completion_id = format!("chatcmpl-{}", uuid::Uuid::new_v4());
-    let created = chrono::Utc::now().timestamp();
-    let model = req.model.clone();
+    let mut last_error = None;
 
-    let chunks = vec![
-        ChatCompletionChunk {
-            id: completion_id.clone(),
-            object: "chat.completion.chunk".to_string(),
-            created,
-            model: model.clone(),
-            choices: vec![ChatChunkChoice {
-                index: 0,
-                delta: ChatDelta {
-                    role: Some("assistant".to_string()),
-                    content: None,
-                },
-                finish_reason: None,
-            }],
-        },
-        ChatCompletionChunk {
-            id: completion_id.clone(),
-            object: "chat.completion.chunk".to_string(),
-            created,
-            model: model.clone(),
-            choices: vec![ChatChunkChoice {
-                index: 0,
-                delta: ChatDelta {
-                    role: None,
-                    content: Some("This ".to_string()),
-                },
-                finish_reason: None,
-            }],
-        },
-        ChatCompletionChunk {
-            id: completion_id.clone(),
-            object: "chat.completion.chunk".to_string(),
-            created,
-            model: model.clone(),
-            choices: vec![ChatChunkChoice {
-                index: 0,
-                delta: ChatDelta {
-                    role: None,
-                    content: Some("is a mock stream.".to_string()),
-                },
-                finish_reason: None,
-            }],
-        },
-        ChatCompletionChunk {
-            id: completion_id.clone(),
-            object: "chat.completion.chunk".to_string(),
-            created,
-            model: model.clone(),
-            choices: vec![ChatChunkChoice {
-                index: 0,
-                delta: ChatDelta {
-                    role: None,
-                    content: None,
-                },
-                finish_reason: Some("stop".to_string()),
-            }],
-        },
-    ];
+    for (p_name, m_name) in ranked_candidates {
+        let Some(provider) = state.provider_manager.get_provider(&p_name).await else {
+            continue;
+        };
 
-    let stream = stream::iter(chunks).map(|chunk| {
-        let data = serde_json::to_string(&chunk).unwrap();
-        Ok(Event::default().data(data))
-    });
+        let mut core_req = CoreRequest::new(p_name.clone(), m_name.clone());
+        core_req.id = request_id;
+        core_req.messages = req.messages.iter().cloned().map(convert_message).collect();
+        core_req.parameters = RequestParameters {
+            temperature: req.temperature,
+            top_p: req.top_p,
+            max_tokens: req.max_tokens,
+            stream: true,
+            stop: req.stop.clone(),
+            ..Default::default()
+        };
 
-    Ok(stream)
+        match provider.stream_request(core_req).await {
+            Ok(provider_stream) => {
+                state.provider_manager.report_result(&p_name, true).await;
+                let model = req.model.clone();
+                let stream = provider_stream
+                    .map(move |chunk| Ok(stream_chunk_to_event(chunk, &model)))
+                    .chain(stream::once(async { Ok(Event::default().data("[DONE]")) }));
+                return Ok(stream);
+            }
+            Err(e) => {
+                warn!(
+                    "Provider {} streaming failed before response: {}",
+                    p_name, e
+                );
+                state.provider_manager.report_result(&p_name, false).await;
+                last_error = Some(e);
+            }
+        }
+    }
+
+    Err(crate::error::ApiError::ProviderError(format!(
+        "No streaming provider succeeded. Last error: {:?}",
+        last_error
+    )))
+}
+
+fn stream_chunk_to_event(chunk: securellm_core::Result<CoreStreamChunk>, model: &str) -> Event {
+    match chunk {
+        Ok(chunk) => {
+            let data = ChatCompletionChunk {
+                id: chunk.chunk_id,
+                object: "chat.completion.chunk".to_string(),
+                created: chrono::Utc::now().timestamp(),
+                model: model.to_string(),
+                choices: vec![ChatChunkChoice {
+                    index: 0,
+                    delta: ChatDelta {
+                        role: chunk.delta.role.map(core_role_to_openai),
+                        content: chunk.delta.content,
+                    },
+                    finish_reason: chunk.finish_reason.map(finish_reason_to_openai),
+                }],
+            };
+
+            Event::default().data(serde_json::to_string(&data).unwrap_or_else(|e| {
+                serde_json::json!({
+                    "error": {
+                        "type": "serialization_error",
+                        "message": e.to_string()
+                    }
+                })
+                .to_string()
+            }))
+        }
+        Err(e) => Event::default().event("error").data(
+            serde_json::json!({
+                "error": {
+                    "type": "provider_stream_error",
+                    "message": e.to_string()
+                }
+            })
+            .to_string(),
+        ),
+    }
+}
+
+fn core_role_to_openai(role: CoreMessageRole) -> String {
+    match role {
+        CoreMessageRole::System => "system",
+        CoreMessageRole::User => "user",
+        CoreMessageRole::Assistant => "assistant",
+        CoreMessageRole::Function => "function",
+    }
+    .to_string()
+}
+
+fn finish_reason_to_openai(reason: securellm_core::FinishReason) -> String {
+    match reason {
+        securellm_core::FinishReason::Stop => "stop",
+        securellm_core::FinishReason::Length => "length",
+        securellm_core::FinishReason::ContentFilter => "content_filter",
+        securellm_core::FinishReason::FunctionCall => "function_call",
+        securellm_core::FinishReason::ToolUse => "tool_calls",
+        securellm_core::FinishReason::Error => "error",
+        securellm_core::FinishReason::Unknown => "unknown",
+    }
+    .to_string()
 }

@@ -8,6 +8,11 @@
 //!
 //! Each test uses a separate `MockServer` instance to avoid state leakage.
 
+use securellm_core::{LLMProvider, Message, MessageContent, MessageRole, Request};
+use securellm_providers::{
+    llamacpp::LlamaCppProvider,
+    openai::{OpenAIConfig, OpenAIProvider},
+};
 use serde_json::json;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -181,6 +186,85 @@ async fn test_openai_rate_limit_error() {
             .and_then(|v| v.to_str().ok()),
         Some("30")
     );
+}
+
+#[tokio::test]
+async fn test_openai_streaming_chat_success() {
+    let mock = MockServer::start().await;
+
+    let body = concat!(
+        "data: {\"id\":\"chatcmpl-stream-001\",\"object\":\"chat.completion.chunk\",\"model\":\"gpt-4o-mini\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\"},\"finish_reason\":null}]}\n\n",
+        "data: {\"id\":\"chatcmpl-stream-001\",\"object\":\"chat.completion.chunk\",\"model\":\"gpt-4o-mini\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello\"},\"finish_reason\":null}]}\n\n",
+        "data: {\"id\":\"chatcmpl-stream-001\",\"object\":\"chat.completion.chunk\",\"model\":\"gpt-4o-mini\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" world\"},\"finish_reason\":null}]}\n\n",
+        "data: {\"id\":\"chatcmpl-stream-001\",\"object\":\"chat.completion.chunk\",\"model\":\"gpt-4o-mini\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n",
+        "data: [DONE]\n\n",
+    );
+
+    Mock::given(method("POST"))
+        .and(path("/v1/chat/completions"))
+        .and(header("Authorization", "Bearer test-openai-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "text/event-stream")
+                .set_body_string(body),
+        )
+        .expect(1)
+        .mount(&mock)
+        .await;
+
+    let provider = OpenAIProvider::new(
+        OpenAIConfig::new("test-openai-key").with_endpoint(format!("{}/v1", mock.uri())),
+    )
+    .unwrap();
+
+    let mut request = Request::new("openai", "gpt-4o-mini");
+    request.messages.push(Message {
+        role: MessageRole::User,
+        content: MessageContent::Text("Hello".to_string()),
+        name: None,
+        metadata: None,
+    });
+
+    let mut stream = provider.stream_request(request).await.unwrap();
+    let mut content = String::new();
+    let mut saw_role = false;
+    let mut saw_stop = false;
+
+    use futures_util::StreamExt;
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.unwrap();
+        if chunk.delta.role == Some(MessageRole::Assistant) {
+            saw_role = true;
+        }
+        if let Some(delta) = chunk.delta.content {
+            content.push_str(&delta);
+        }
+        if chunk.finish_reason == Some(securellm_core::FinishReason::Stop) {
+            saw_stop = true;
+        }
+    }
+
+    assert!(saw_role);
+    assert_eq!(content, "Hello world");
+    assert!(saw_stop);
+}
+
+#[tokio::test]
+async fn test_unsupported_provider_streaming_returns_error() {
+    let provider = LlamaCppProvider::new(5001, "local-model").unwrap();
+    let mut request = Request::new("llamacpp", "local-model");
+    request.messages.push(Message {
+        role: MessageRole::User,
+        content: MessageContent::Text("Hello".to_string()),
+        name: None,
+        metadata: None,
+    });
+
+    let err = match provider.stream_request(request).await {
+        Ok(_) => panic!("llamacpp streaming should be unsupported"),
+        Err(err) => err,
+    };
+    assert!(err.to_string().contains("streaming is not implemented"));
 }
 
 // ── Anthropic Provider ──────────────────────────────────────────────
