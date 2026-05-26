@@ -15,7 +15,7 @@ pub struct Software {
     pub license: String,
     pub maintainers: Vec<String>,
     pub source_types: Vec<String>, // ["nix", "linux", "docker", "cargo"]
-    pub source_url: String,         // e.g., "https://github.com/voidnxlabs/{name}"
+    pub source_url: String,        // e.g., "https://github.com/voidnxlabs/{name}"
 }
 
 #[derive(Clone, Debug)]
@@ -28,6 +28,22 @@ impl SoftwareRegistry {
         let mut softwares = HashMap::new();
 
         // Define public software from ~/master/*
+        softwares.insert(
+            "securellm-bridge".to_string(),
+            Software {
+                name: "securellm-bridge".to_string(),
+                version: "0.1.0".to_string(),
+                description: "Universal LLM provider gateway with security, rate-limiting, and multi-provider support".to_string(),
+                category: "ai".to_string(),
+                repository: "https://github.com/voidnxlabs/securellm-bridge".to_string(),
+                homepage: Some("https://voidnxlabs.io".to_string()),
+                license: "Apache-2.0".to_string(),
+                maintainers: vec!["voidnxlabs <dev@voidnxlabs.io>".to_string()],
+                source_types: vec!["nix".to_string(), "cargo".to_string(), "docker".to_string()],
+                source_url: "https://github.com/voidnxlabs/securellm-bridge".to_string(),
+            },
+        );
+
         softwares.insert(
             "spider-nix".to_string(),
             Software {
