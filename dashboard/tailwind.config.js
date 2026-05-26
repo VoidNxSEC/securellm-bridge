@@ -1,10 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ["class"],
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     container: {
       center: true,
@@ -48,21 +45,21 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Cerebro specific colors
-        cerebro: {
-          primary: "#6366f1",    // Indigo
-          secondary: "#8b5cf6",  // Violet
-          accent: "#06b6d4",     // Cyan
-          success: "#22c55e",    // Green
-          warning: "#f59e0b",    // Amber
-          danger: "#ef4444",     // Red
-          info: "#3b82f6",       // Blue
+        // Bridge specific colors
+        bridge: {
+          primary: "#6366f1", // Indigo
+          secondary: "#8b5cf6", // Violet
+          accent: "#06b6d4", // Cyan
+          success: "#22c55e", // Green
+          warning: "#f59e0b", // Amber
+          danger: "#ef4444", // Red
+          info: "#3b82f6", // Blue
         },
         intel: {
-          sigint: "#f59e0b",     // Signals - Amber
-          humint: "#22c55e",     // Human - Green
-          osint: "#3b82f6",      // Open Source - Blue
-          techint: "#8b5cf6",    // Technical - Violet
+          sigint: "#f59e0b", // Signals - Amber
+          humint: "#22c55e", // Human - Green
+          osint: "#3b82f6", // Open Source - Blue
+          techint: "#8b5cf6", // Technical - Violet
         },
         threat: {
           critical: "#ef4444",
@@ -104,4 +101,4 @@ export default {
     },
   },
   plugins: [require("tailwindcss-animate")],
-}
+};

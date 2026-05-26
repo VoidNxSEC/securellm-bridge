@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { NavLink } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   Brain,
   LayoutDashboard,
@@ -13,47 +13,47 @@ import {
   Users,
   Globe,
   Code,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useStatus } from '@/hooks/useApi'
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useStatus } from "@/hooks/useApi";
 
 const navItems = [
   {
-    title: 'Dashboard',
-    href: '/',
+    title: "Dashboard",
+    href: "/",
     icon: LayoutDashboard,
   },
   {
-    title: 'Projects',
-    href: '/projects',
+    title: "Projects",
+    href: "/projects",
     icon: FolderKanban,
   },
   {
-    title: 'Intelligence',
-    href: '/intelligence',
+    title: "Intelligence",
+    href: "/intelligence",
     icon: Search,
   },
   {
-    title: 'Briefing',
-    href: '/briefing',
+    title: "Briefing",
+    href: "/briefing",
     icon: FileText,
   },
   {
-    title: 'Settings',
-    href: '/settings',
+    title: "Settings",
+    href: "/settings",
     icon: Settings,
   },
-]
+];
 
 const intelTypes = [
-  { name: 'SIGINT', icon: Radio, color: 'text-amber-500' },
-  { name: 'HUMINT', icon: Users, color: 'text-green-500' },
-  { name: 'OSINT', icon: Globe, color: 'text-blue-500' },
-  { name: 'TECHINT', icon: Code, color: 'text-violet-500' },
-]
+  { name: "SIGINT", icon: Radio, color: "text-amber-500" },
+  { name: "HUMINT", icon: Users, color: "text-green-500" },
+  { name: "OSINT", icon: Globe, color: "text-blue-500" },
+  { name: "TECHINT", icon: Code, color: "text-violet-500" },
+];
 
 export function Sidebar() {
-  const { data: status } = useStatus()
+  const { data: status } = useStatus();
 
   return (
     <div className="flex h-full flex-col">
@@ -61,13 +61,13 @@ export function Sidebar() {
       <div className="flex h-16 items-center gap-3 border-b px-6">
         <motion.div
           animate={{ rotate: [0, 360] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
         >
-          <Brain className="h-8 w-8 text-cerebro-primary" />
+          <Brain className="h-8 w-8 text-bridge-primary" />
         </motion.div>
         <div>
-          <h1 className="text-xl font-bold tracking-tight">CEREBRO</h1>
-          <p className="text-xs text-muted-foreground">Intelligence System</p>
+          <h1 className="text-xl font-bold tracking-tight">Bridge</h1>
+          <p className="text-xs text-muted-foreground">LLM Gateway</p>
         </div>
       </div>
 
@@ -78,12 +78,12 @@ export function Sidebar() {
           <div className="flex items-center gap-2">
             <span
               className={cn(
-                'h-2 w-2 rounded-full',
-                status ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+                "h-2 w-2 rounded-full",
+                status ? "bg-green-500 animate-pulse" : "bg-red-500",
               )}
             />
-            <span className={status ? 'text-green-500' : 'text-red-500'}>
-              {status ? 'Online' : 'Offline'}
+            <span className={status ? "text-green-500" : "text-red-500"}>
+              {status ? "Online" : "Offline"}
             </span>
           </div>
         </div>
@@ -91,7 +91,9 @@ export function Sidebar() {
           <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
             <div className="rounded bg-muted/50 p-2">
               <div className="text-muted-foreground">Projects</div>
-              <div className="text-lg font-semibold">{status.total_projects}</div>
+              <div className="text-lg font-semibold">
+                {status.total_projects}
+              </div>
             </div>
             <div className="rounded bg-muted/50 p-2">
               <div className="text-muted-foreground">Health</div>
@@ -114,10 +116,10 @@ export function Sidebar() {
             to={item.href}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )
             }
           >
@@ -135,7 +137,7 @@ export function Sidebar() {
             key={type.name}
             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm"
           >
-            <type.icon className={cn('h-4 w-4', type.color)} />
+            <type.icon className={cn("h-4 w-4", type.color)} />
             <span className="text-muted-foreground">{type.name}</span>
           </div>
         ))}
@@ -148,9 +150,9 @@ export function Sidebar() {
           <span>Classification: INTERNAL</span>
         </div>
         <div className="mt-1 text-xs text-muted-foreground">
-          v1.0.0 | ~/arch ecosystem
+          v0.1.0 | SecureLLM Bridge
         </div>
       </div>
     </div>
-  )
+  );
 }

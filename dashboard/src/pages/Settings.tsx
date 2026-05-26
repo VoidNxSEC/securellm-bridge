@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from "react";
 import {
   Settings as SettingsIcon,
   RefreshCw,
@@ -9,14 +9,20 @@ import {
   Database,
   Scan,
   Trash2,
-} from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { useDashboardStore } from '@/stores/dashboard'
-import { useIntelligenceStats, useScanMutation } from '@/hooks/useApi'
-import { TIME_RANGES } from '@/types'
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { useDashboardStore } from "@/stores/dashboard";
+import { useIntelligenceStats, useScanMutation } from "@/hooks/useApi";
+import { TIME_RANGES } from "@/types";
 
 export function Settings() {
   const {
@@ -28,14 +34,14 @@ export function Settings() {
     setTheme,
     timeRange,
     setTimeRange,
-  } = useDashboardStore()
+  } = useDashboardStore();
 
-  const { data: stats } = useIntelligenceStats()
-  const scanMutation = useScanMutation()
+  const { data: stats } = useIntelligenceStats();
+  const scanMutation = useScanMutation();
 
   const handleFullScan = () => {
-    scanMutation.mutate({ full_scan: true, collect_intelligence: true })
-  }
+    scanMutation.mutate({ full_scan: true, collect_intelligence: true });
+  };
 
   return (
     <div className="space-y-6">
@@ -43,7 +49,7 @@ export function Settings() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">
-          Configure your Cerebro Intelligence Dashboard
+          Configure your SecureLLM Bridge Gateway
         </p>
       </div>
 
@@ -69,17 +75,17 @@ export function Settings() {
               </div>
               <div className="flex gap-2">
                 <Button
-                  variant={theme === 'light' ? 'default' : 'outline'}
+                  variant={theme === "light" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTheme('light')}
+                  onClick={() => setTheme("light")}
                 >
                   <Sun className="h-4 w-4 mr-2" />
                   Light
                 </Button>
                 <Button
-                  variant={theme === 'dark' ? 'default' : 'outline'}
+                  variant={theme === "dark" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTheme('dark')}
+                  onClick={() => setTheme("dark")}
                 >
                   <Moon className="h-4 w-4 mr-2" />
                   Dark
@@ -116,9 +122,7 @@ export function Settings() {
               <RefreshCw className="h-5 w-5" />
               Auto Refresh
             </CardTitle>
-            <CardDescription>
-              Configure automatic data refresh
-            </CardDescription>
+            <CardDescription>Configure automatic data refresh</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
@@ -129,11 +133,11 @@ export function Settings() {
                 </p>
               </div>
               <Button
-                variant={autoRefresh ? 'default' : 'outline'}
+                variant={autoRefresh ? "default" : "outline"}
                 size="sm"
                 onClick={() => setAutoRefresh(!autoRefresh)}
               >
-                {autoRefresh ? 'Enabled' : 'Disabled'}
+                {autoRefresh ? "Enabled" : "Disabled"}
               </Button>
             </div>
 
@@ -148,7 +152,9 @@ export function Settings() {
                 <Input
                   type="number"
                   value={refreshInterval / 1000}
-                  onChange={(e) => setRefreshInterval(Number(e.target.value) * 1000)}
+                  onChange={(e) =>
+                    setRefreshInterval(Number(e.target.value) * 1000)
+                  }
                   className="w-20"
                   min={5}
                   max={300}
@@ -176,30 +182,44 @@ export function Settings() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-lg bg-muted/50 p-3">
                     <p className="text-sm text-muted-foreground">Model</p>
-                    <p className="font-mono text-sm">{stats.indexer_stats.model}</p>
+                    <p className="font-mono text-sm">
+                      {stats.indexer_stats.model}
+                    </p>
                   </div>
                   <div className="rounded-lg bg-muted/50 p-3">
                     <p className="text-sm text-muted-foreground">Dimensions</p>
-                    <p className="font-semibold">{stats.indexer_stats.embedding_dim}</p>
+                    <p className="font-semibold">
+                      {stats.indexer_stats.embedding_dim}
+                    </p>
                   </div>
                   <div className="rounded-lg bg-muted/50 p-3">
-                    <p className="text-sm text-muted-foreground">Indexed Items</p>
-                    <p className="font-semibold">{stats.indexer_stats.indexed_items}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Indexed Items
+                    </p>
+                    <p className="font-semibold">
+                      {stats.indexer_stats.indexed_items}
+                    </p>
                   </div>
                   <div className="rounded-lg bg-muted/50 p-3">
                     <p className="text-sm text-muted-foreground">Index Size</p>
-                    <p className="font-semibold">{stats.indexer_stats.index_size_mb?.toFixed(2)} MB</p>
+                    <p className="font-semibold">
+                      {stats.indexer_stats.index_size_mb?.toFixed(2)} MB
+                    </p>
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-sm font-medium mb-2">Intelligence by Type</p>
+                  <p className="text-sm font-medium mb-2">
+                    Intelligence by Type
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    {Object.entries(stats.by_type || {}).map(([type, count]) => (
-                      <Badge key={type} variant={type as any}>
-                        {type}: {count}
-                      </Badge>
-                    ))}
+                    {Object.entries(stats.by_type || {}).map(
+                      ([type, count]) => (
+                        <Badge key={type} variant={type as any}>
+                          {type}: {count}
+                        </Badge>
+                      ),
+                    )}
                   </div>
                 </div>
               </>
@@ -251,9 +271,14 @@ export function Settings() {
                 <p className="font-medium mb-1">Last Scan Results</p>
                 <ul className="space-y-1 text-muted-foreground">
                   <li>Projects found: {scanMutation.data.projects_found}</li>
-                  <li>Intelligence collected: {scanMutation.data.intelligence_collected}</li>
+                  <li>
+                    Intelligence collected:{" "}
+                    {scanMutation.data.intelligence_collected}
+                  </li>
                   <li>Items indexed: {scanMutation.data.indexed_items}</li>
-                  <li>Duration: {scanMutation.data.duration_seconds?.toFixed(1)}s</li>
+                  <li>
+                    Duration: {scanMutation.data.duration_seconds?.toFixed(1)}s
+                  </li>
                 </ul>
               </div>
             )}
@@ -277,20 +302,22 @@ export function Settings() {
       {/* About */}
       <Card>
         <CardHeader>
-          <CardTitle>About CEREBRO</CardTitle>
+          <CardTitle>About SecureLLM Bridge</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="prose prose-sm dark:prose-invert max-w-none">
             <p>
-              <strong>CEREBRO Intelligence System</strong> is the central brain of the ~/arch ecosystem.
-              It provides unified intelligence gathering, analysis, and dissemination across all your projects.
+              <strong>SecureLLM Bridge</strong> is a universal LLM provider
+              gateway that provides a secure, unified API for multiple AI
+              providers including DeepSeek, OpenAI, Anthropic, Gemini, Groq, and
+              local models.
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              Version 1.0.0 | Built with React, TypeScript, and FastAPI
+              Version 0.1.0 | Built with Rust, React, and TypeScript
             </p>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
