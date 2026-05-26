@@ -8,6 +8,7 @@ pub mod llamacpp;
 pub mod ml_ops;
 pub mod nvidia;
 pub mod openai;
+mod openai_compat_stream;
 
 /// Provider-specific error types
 #[derive(Error, Debug)]

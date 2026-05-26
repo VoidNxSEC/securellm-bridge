@@ -26,6 +26,8 @@ struct OaiRequest {
     temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stream: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -100,7 +102,7 @@ impl LLMProvider for MlOpsProvider {
 
     fn capabilities(&self) -> ProviderCapabilities {
         ProviderCapabilities {
-            streaming: false,
+            streaming: true,
             function_calling: false,
             vision: false,
             embeddings: false,
@@ -139,6 +141,7 @@ impl LLMProvider for MlOpsProvider {
             messages,
             temperature: request.parameters.temperature,
             max_tokens: request.parameters.max_tokens,
+            stream: Some(false),
         };
 
         let response = self
@@ -202,6 +205,47 @@ impl LLMProvider for MlOpsProvider {
                 extra: std::collections::HashMap::new(),
             },
         })
+    }
+
+    async fn stream_request(&self, mut request: Request) -> Result<ProviderStream> {
+        request.parameters.stream = true;
+        request.validate()?;
+
+        let mut messages: Vec<OaiMessage> = Vec::new();
+        if let Some(system) = &request.system {
+            messages.push(OaiMessage {
+                role: "system".to_string(),
+                content: system.clone(),
+            });
+        }
+        for msg in &request.messages {
+            messages.push(OaiMessage {
+                role: match msg.role {
+                    MessageRole::User => "user",
+                    MessageRole::Assistant => "assistant",
+                    MessageRole::System => "system",
+                    MessageRole::Function => "function",
+                }
+                .to_string(),
+                content: msg.content.text(),
+            });
+        }
+
+        let oai_req = OaiRequest {
+            model: request.model.clone(),
+            messages,
+            temperature: request.parameters.temperature,
+            max_tokens: request.parameters.max_tokens,
+            stream: Some(true),
+        };
+
+        let req_builder = self
+            .client
+            .post(format!("{}/v1/chat/completions", self.base_url))
+            .header("Content-Type", "application/json")
+            .json(&oai_req);
+
+        crate::openai_compat_stream::send_stream("ml-ops", &request, req_builder).await
     }
 
     async fn health_check(&self) -> Result<ProviderHealth> {

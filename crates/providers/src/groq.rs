@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use secrecy::{ExposeSecret, SecretString};
 use securellm_core::{
     Error, HealthStatus, LLMProvider, ModelInfo, ModelPricing, ProviderCapabilities,
-    ProviderHealth, Request, Response, ResponseMetadata, TokenUsage,
+    ProviderHealth, ProviderStream, Request, Response, ResponseMetadata, TokenUsage,
 };
 use std::time::{Duration, Instant};
 
@@ -119,6 +119,44 @@ impl LLMProvider for GroqProvider {
                 extra: std::collections::HashMap::new(),
             },
         })
+    }
+
+    async fn stream_request(&self, mut request: Request) -> securellm_core::Result<ProviderStream> {
+        request.parameters.stream = true;
+        request.validate()?;
+
+        let url = format!("{}/chat/completions", self.config.endpoint);
+        let body = serde_json::json!({
+            "model": request.model.clone(),
+            "messages": request.messages.iter().map(|msg| {
+                serde_json::json!({
+                    "role": match msg.role {
+                        securellm_core::MessageRole::System => "system",
+                        securellm_core::MessageRole::User => "user",
+                        securellm_core::MessageRole::Assistant => "assistant",
+                        securellm_core::MessageRole::Function => "function",
+                    },
+                    "content": msg.content.text(),
+                })
+            }).collect::<Vec<_>>(),
+            "temperature": request.parameters.temperature,
+            "max_tokens": request.parameters.max_tokens,
+            "top_p": request.parameters.top_p,
+            "stop": request.parameters.stop.clone(),
+            "stream": true,
+        });
+
+        let req_builder = self
+            .client
+            .post(&url)
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.config.api_key.expose_secret()),
+            )
+            .header("Content-Type", "application/json")
+            .json(&body);
+
+        crate::openai_compat_stream::send_stream("groq", &request, req_builder).await
     }
 
     async fn health_check(&self) -> securellm_core::Result<ProviderHealth> {

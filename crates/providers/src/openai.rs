@@ -3,8 +3,8 @@ use async_trait::async_trait;
 use secrecy::{ExposeSecret, SecretString};
 use securellm_core::{
     Choice, ContentPart, Error, FinishReason, HealthStatus, LLMProvider, Message, MessageContent,
-    MessageRole, ModelInfo, ModelPricing, ProviderCapabilities, ProviderHealth, Request, Response,
-    ResponseMetadata, TokenUsage,
+    MessageRole, ModelInfo, ModelPricing, ProviderCapabilities, ProviderHealth, ProviderStream,
+    Request, Response, ResponseMetadata, TokenUsage,
 };
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
@@ -297,6 +297,35 @@ impl LLMProvider for OpenAIProvider {
         }
 
         Ok(securellm_response)
+    }
+
+    async fn stream_request(&self, mut request: Request) -> securellm_core::Result<ProviderStream> {
+        request.parameters.stream = true;
+        request.validate()?;
+
+        let openai_request = self
+            .convert_request(&request)
+            .map_err(|e| Error::Provider {
+                provider: "openai".to_string(),
+                message: format!("Request conversion failed: {}", e),
+            })?;
+
+        let url = format!("{}/chat/completions", self.config.endpoint);
+        let mut req_builder = self
+            .client
+            .post(&url)
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.config.api_key.expose_secret()),
+            )
+            .header("Content-Type", "application/json")
+            .json(&openai_request);
+
+        if let Some(org_id) = &self.config.organization_id {
+            req_builder = req_builder.header("OpenAI-Organization", org_id);
+        }
+
+        crate::openai_compat_stream::send_stream("openai", &request, req_builder).await
     }
 
     async fn health_check(&self) -> securellm_core::Result<ProviderHealth> {
