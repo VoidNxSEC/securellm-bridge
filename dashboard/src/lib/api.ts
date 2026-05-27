@@ -7,6 +7,8 @@ import type {
   Alert,
   DependencyGraph,
   IntelligenceType,
+  IntelligenceStats,
+  ScanResult,
 } from '@/types'
 
 const API_BASE = '/api'
@@ -78,11 +80,7 @@ class ApiClient {
     return this.request(`/intelligence/query?${query.toString()}`)
   }
 
-  async getIntelligenceStats(): Promise<{
-    total: number
-    by_type: Record<string, number>
-    by_threat: Record<string, number>
-  }> {
+  async getIntelligenceStats(): Promise<IntelligenceStats> {
     return this.request('/intelligence/stats')
   }
 
@@ -106,8 +104,11 @@ class ApiClient {
   }
 
   // Actions
-  async triggerScan(): Promise<{ message: string }> {
-    return this.request('/scan', { method: 'POST' })
+  async triggerScan(params?: { full_scan?: boolean; collect_intelligence?: boolean }): Promise<ScanResult> {
+    return this.request('/scan', {
+      method: 'POST',
+      body: params ? JSON.stringify(params) : undefined,
+    })
   }
 }
 

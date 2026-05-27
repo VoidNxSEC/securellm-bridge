@@ -46,7 +46,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-[#1A2236] bg-[#0A0E1A]/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-[#0A0E1A]/80 sm:px-6">
       {/* Left Section */}
       <div className="flex items-center gap-4">
         <Button
@@ -63,7 +63,7 @@ export function Header() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search intelligence..."
-            className="w-80 pl-10 pr-10"
+            className="w-80 border-[#1A2236] bg-[#111827] pl-10 pr-10 text-[#E2E8F0]"
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
           />
@@ -86,7 +86,7 @@ export function Header() {
           <Button
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="gap-2 border-[#1A2236] bg-transparent text-[#E2E8F0] hover:bg-[#111827]"
             onClick={() => setShowTimeDropdown(!showTimeDropdown)}
           >
             <Clock className="h-4 w-4" />
@@ -98,7 +98,7 @@ export function Header() {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="absolute right-0 top-full z-50 mt-1 w-48 rounded-md border bg-popover p-1 shadow-md"
+              className="absolute right-0 top-full z-50 mt-1 w-48 rounded-md border border-[#1A2236] bg-[#111827] p-1 shadow-md"
             >
               {TIME_RANGES.map((range) => (
                 <button
@@ -110,8 +110,8 @@ export function Header() {
                   className={cn(
                     'flex w-full items-center rounded-sm px-2 py-1.5 text-sm',
                     timeRange === range.value
-                      ? 'bg-accent text-accent-foreground'
-                      : 'hover:bg-muted'
+                      ? 'bg-[#6366F1] text-white'
+                      : 'text-[#94A3B8] hover:bg-[#1A2236]'
                   )}
                 >
                   {range.label}
@@ -123,7 +123,7 @@ export function Header() {
 
         {/* Auto Refresh Toggle */}
         <Button
-          variant={autoRefresh ? 'default' : 'outline'}
+          variant={autoRefresh ? 'bridge' : 'outline'}
           size="sm"
           className="gap-2"
           onClick={() => setAutoRefresh(!autoRefresh)}
@@ -142,6 +142,7 @@ export function Header() {
         <Button
           variant="outline"
           size="sm"
+          className="border-[#1A2236] bg-transparent text-[#E2E8F0] hover:bg-[#111827]"
           onClick={handleScan}
           disabled={scanMutation.isPending}
         >

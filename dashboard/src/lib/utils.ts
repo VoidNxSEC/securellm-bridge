@@ -11,6 +11,22 @@ export function getHealthColor(score: number): string {
   return 'text-red-500'
 }
 
+export function getThreatColor(level: string): string {
+  if (level === 'critical') return 'text-red-500'
+  if (level === 'high') return 'text-orange-500'
+  if (level === 'medium') return 'text-yellow-500'
+  if (level === 'low') return 'text-green-500'
+  return 'text-blue-500'
+}
+
+export function getIntelTypeColor(type: string): string {
+  if (type === 'sigint') return 'text-amber-500'
+  if (type === 'humint') return 'text-green-500'
+  if (type === 'osint') return 'text-blue-500'
+  if (type === 'techint') return 'text-violet-500'
+  return 'text-muted-foreground'
+}
+
 export function formatRelativeTime(dateString: string | null): string {
   if (!dateString) return 'Never'
 

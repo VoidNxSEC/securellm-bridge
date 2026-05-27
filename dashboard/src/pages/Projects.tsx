@@ -8,7 +8,6 @@ import {
   Grid,
   List,
   ExternalLink,
-  GitBranch,
   Clock,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -37,7 +36,7 @@ export function Projects() {
   })
 
   if (projectName && projectDetail) {
-    return <ProjectDetail project={projectDetail.project} analysis={projectDetail.analysis} />
+    return <ProjectDetail project={projectDetail} />
   }
 
   return (
@@ -260,7 +259,7 @@ function ProjectRow({ project, index }: { project: Project; index: number }) {
   )
 }
 
-function ProjectDetail({ project, analysis }: { project: Project; analysis: any }) {
+function ProjectDetail({ project }: { project: Project }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -320,35 +319,16 @@ function ProjectDetail({ project, analysis }: { project: Project; analysis: any 
       </div>
 
       {/* Analysis */}
-      {analysis && (
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Insights</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {analysis.insights?.map((insight: string, i: number) => (
-                  <li key={i} className="text-sm">• {insight}</li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Recommendations</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {analysis.recommendations?.map((rec: string, i: number) => (
-                  <li key={i} className="text-sm">• {rec}</li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Metadata</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <pre className="overflow-auto rounded bg-muted/50 p-4 text-xs">
+            {JSON.stringify(project.metadata, null, 2)}
+          </pre>
+        </CardContent>
+      </Card>
     </div>
   )
 }

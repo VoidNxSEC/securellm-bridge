@@ -27,6 +27,26 @@ export interface ProjectAnalysis {
   }
 }
 
+export interface IntelligenceStats {
+  total: number
+  by_type: Record<string, number>
+  by_threat: Record<string, number>
+  indexer_stats?: {
+    model: string
+    embedding_dim: number
+    indexed_items: number
+    index_size_mb?: number
+  }
+}
+
+export interface ScanResult {
+  message: string
+  projects_found?: number
+  intelligence_collected?: number
+  indexed_items?: number
+  duration_seconds?: number
+}
+
 export interface IntelligenceItem {
   id: string
   type: IntelligenceType

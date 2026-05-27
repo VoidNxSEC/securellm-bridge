@@ -1,9 +1,5 @@
-import { useState } from "react";
 import {
-  Settings as SettingsIcon,
   RefreshCw,
-  Clock,
-  Bell,
   Moon,
   Sun,
   Database,

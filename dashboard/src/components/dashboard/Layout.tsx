@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
@@ -13,7 +12,7 @@ export function Layout({ children }: LayoutProps) {
   const { sidebarOpen } = useDashboardStore()
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="dark min-h-screen bg-[#0A0E1A] text-[#E2E8F0]">
       {/* Sidebar */}
       <AnimatePresence mode="wait">
         {sidebarOpen && (
@@ -22,7 +21,7 @@ export function Layout({ children }: LayoutProps) {
             animate={{ x: 0 }}
             exit={{ x: -280 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
-            className="fixed inset-y-0 left-0 z-50 w-72 border-r bg-card"
+            className="fixed inset-y-0 left-0 z-50 w-72 border-r border-[#1A2236] bg-[#0A0E1A]"
           >
             <Sidebar />
           </motion.aside>
@@ -40,7 +39,7 @@ export function Layout({ children }: LayoutProps) {
         <Header />
 
         {/* Page Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-4 sm:p-6">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

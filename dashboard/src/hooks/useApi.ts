@@ -21,7 +21,7 @@ export function useStatus() {
 
   return useQuery({
     queryKey: queryKeys.status,
-    queryFn: api.getStatus,
+    queryFn: () => api.getStatus(),
     refetchInterval: autoRefresh ? refreshInterval : false,
   })
 }
@@ -71,7 +71,7 @@ export function useIntelligenceQuery(
 export function useIntelligenceStats() {
   return useQuery({
     queryKey: queryKeys.intelligenceStats,
-    queryFn: api.getIntelligenceStats,
+    queryFn: () => api.getIntelligenceStats(),
   })
 }
 
@@ -79,14 +79,14 @@ export function useIntelligenceStats() {
 export function useDailyBriefing() {
   return useQuery({
     queryKey: queryKeys.briefing('daily'),
-    queryFn: api.getDailyBriefing,
+    queryFn: () => api.getDailyBriefing(),
   })
 }
 
 export function useExecutiveBriefing() {
   return useQuery({
     queryKey: queryKeys.briefing('executive'),
-    queryFn: api.getExecutiveBriefing,
+    queryFn: () => api.getExecutiveBriefing(),
   })
 }
 
@@ -96,7 +96,7 @@ export function useAlerts() {
 
   return useQuery({
     queryKey: queryKeys.alerts,
-    queryFn: api.getAlerts,
+    queryFn: () => api.getAlerts(),
     refetchInterval: autoRefresh ? refreshInterval : false,
   })
 }
@@ -105,7 +105,7 @@ export function useAlerts() {
 export function useDependencyGraph() {
   return useQuery({
     queryKey: queryKeys.graph,
-    queryFn: api.getDependencyGraph,
+    queryFn: () => api.getDependencyGraph(),
   })
 }
 
@@ -114,7 +114,8 @@ export function useScanMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: api.triggerScan,
+    mutationFn: (params?: { full_scan?: boolean; collect_intelligence?: boolean }) =>
+      api.triggerScan(params),
     onSuccess: () => {
       // Invalidate all queries after scan
       queryClient.invalidateQueries({ queryKey: ['status'] })
