@@ -4,13 +4,14 @@ services:
   securellm-proxy:
     build:
       context: ..
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
     ports:
       - "8080:8080"
     environment:
       - RUST_LOG=info
+      - DATABASE_URL=sqlite:///var/lib/securellm/models.db?mode=rwc
     volumes:
-      - ./config:/home/securellm/.config/securellm:ro
+      - ../config:/home/securellm/.config/securellm:ro
       - ./data:/home/securellm/data
     restart: unless-stopped
     security_opt:
@@ -19,17 +20,15 @@ services:
       - ALL
     cap_add:
       - NET_BIND_SERVICE
-    read_only: true
-    tmpfs:
-      - /tmp
+    # read_only: true  # re-enable in prod after pointing log output to data vol
 
   securellm-audit:
     build:
       context: ..
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
     volumes:
       - ./logs:/home/securellm/logs
-      - ./config:/home/securellm/.config/securellm:ro
+      - ../config:/home/securellm/.config/securellm:ro
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
