@@ -3,7 +3,7 @@
 //! Provides Text-to-Speech capabilities using system TTS engine.
 //! STT (Speech-to-Text) is planned for future integration with Whisper.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 

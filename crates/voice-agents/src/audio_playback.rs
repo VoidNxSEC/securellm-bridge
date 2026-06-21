@@ -1,7 +1,6 @@
 //! Audio playback using cpal
 
-use anyhow::{Context, Result};
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use anyhow::Result;
 
 pub struct AudioPlayback {
     // Placeholder for future implementation
