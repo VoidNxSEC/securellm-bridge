@@ -226,14 +226,20 @@ impl LLMProvider for LlamaCppProvider {
                     .into_iter()
                     .map(|model| {
                         let context_window = model.meta.as_ref().and_then(|m| m.n_ctx_train);
+                        let n_params = model.meta.as_ref().and_then(|m| m.n_params);
 
                         ModelInfo {
                             id: model.id.clone(),
                             name: model.id.clone(),
-                            description: Some(format!(
-                                "LlamaCpp model (owned by: {})",
-                                model.owned_by
-                            )),
+                            description: Some(match n_params {
+                                Some(n) => format!(
+                                    "LlamaCpp model (owned by: {}, params: {})",
+                                    model.owned_by, n
+                                ),
+                                None => {
+                                    format!("LlamaCpp model (owned by: {})", model.owned_by)
+                                }
+                            }),
                             context_window: context_window.or(Some(8192)),
                             max_output_tokens: Some(4096),
                             capabilities: vec!["completion".to_string()],

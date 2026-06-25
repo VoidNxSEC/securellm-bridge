@@ -437,6 +437,7 @@ struct AnthropicResponse {
 #[derive(Debug, Deserialize)]
 struct AnthropicContent {
     #[serde(rename = "type")]
+    #[allow(dead_code)] // present to mirror Anthropic's content-block shape; not branched on
     type_: String,
     text: String,
 }

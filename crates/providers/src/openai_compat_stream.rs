@@ -91,7 +91,7 @@ fn role_from_str(role: &str) -> MessageRole {
     }
 }
 
-fn finish_reason_from_str(reason: &str) -> FinishReason {
+pub(crate) fn finish_reason_from_str(reason: &str) -> FinishReason {
     match reason {
         "stop" => FinishReason::Stop,
         "length" => FinishReason::Length,

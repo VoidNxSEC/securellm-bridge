@@ -168,12 +168,15 @@ impl LLMProvider for MlOpsProvider {
 
         let processing_time = start.elapsed().as_millis() as u64;
 
-        let content = oai_resp
-            .choices
-            .into_iter()
-            .next()
-            .map(|c| c.message.content)
+        let first_choice = oai_resp.choices.into_iter().next();
+        let content = first_choice
+            .as_ref()
+            .map(|c| c.message.content.clone())
             .unwrap_or_default();
+        let finish_reason = first_choice
+            .and_then(|c| c.finish_reason)
+            .map(|r| crate::openai_compat_stream::finish_reason_from_str(&r))
+            .unwrap_or(FinishReason::Stop);
 
         Ok(Response {
             request_id: request.id,
@@ -188,7 +191,7 @@ impl LLMProvider for MlOpsProvider {
                     name: None,
                     metadata: None,
                 },
-                finish_reason: FinishReason::Stop,
+                finish_reason,
                 logprobs: None,
             }],
             usage: TokenUsage {

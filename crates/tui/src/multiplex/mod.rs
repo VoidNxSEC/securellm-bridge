@@ -5,5 +5,5 @@ mod pane;
 mod tabs;
 
 pub use layout::Layout;
-pub use pane::{ChatPane, Pane, PaneId, ToolPane};
-pub use tabs::{Tab, TabBar};
+pub use pane::{Pane, PaneId};
+pub use tabs::TabBar;
